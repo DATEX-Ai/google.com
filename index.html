@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>DATEX-Ai.com</title>
     <link rel="icon" type="image/jpeg" href="logo.jpg.jpg">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -12,7 +12,7 @@
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; -webkit-tap-highlight-color: transparent; }
         
-        /* Screen Fix: Ensuring body fits Chrome perfectly */
+        /* Fixed: 100dvh for mobile Chrome and overflow-hidden for body */
         body { 
             background-color: #ffffff; 
             color: #333; 
@@ -21,6 +21,7 @@
             display: flex; 
             overflow: hidden; 
             width: 100%; 
+            position: fixed; /* Prevents body bounce on mobile */
         }
 
         /* --- Sidebar --- */
@@ -39,7 +40,7 @@
         .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.1); display: none; z-index: 1000; cursor: pointer; }
         .overlay.active { display: block; }
 
-        /* --- Layout Fix: Wrapper constraints --- */
+        /* --- Layout Fix --- */
         .wrapper { 
             flex: 1; 
             display: flex; 
@@ -61,11 +62,11 @@
         .logo-container img { width: 42px; height: 42px; border-radius: 50%; object-fit: cover; border: 1.5px solid #eee; }
 
         /* --- Chat Screen --- */
-        .main-content { flex: 1; display: flex; flex-direction: column; overflow-y: auto; padding: 20px; width: 100%; max-width: 800px; margin: 0 auto; scrollbar-width: none; }
-        .welcome-screen { text-align: center; margin-top: 22vh; color: #222; font-size: 24px; font-weight: 500; line-height: 1.0; }
+        .main-content { flex: 1; display: flex; flex-direction: column; overflow-y: auto; padding: 10px 20px 100px 20px; width: 100%; max-width: 800px; margin: 0 auto; scrollbar-width: none; }
+        .welcome-screen { text-align: center; margin-top: 15vh; color: #222; font-size: 24px; font-weight: 500; line-height: 1.0; }
         
-        /* Adjusted margin-top to move DATEX Ai lower as requested */
-        .welcome-screen span { display: block; font-size: 42px; letter-spacing: 4px; font-weight: 700; color: #000; margin-top: 20px; } 
+        /* Adjusted: Moving DATEX Ai lower */
+        .welcome-screen span { display: block; font-size: 42px; letter-spacing: 4px; font-weight: 700; color: #000; margin-top: 25px; } 
 
         .message-row { display: flex; width: 100%; margin: 15px 0; align-items: flex-start; gap: 12px; }
         .user-row { flex-direction: row-reverse; }
@@ -75,23 +76,34 @@
         .ai-bubble { background-color: #fff; border: 1px solid #e5e7eb; border-bottom-left-radius: 4px; }
         .avatar { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; border: 1px solid #eee; flex-shrink: 0; }
 
+        /* --- Input Bar Fix: Anchored to Bottom --- */
+        .bottom-container { 
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 10px 15px 20px 15px; 
+            background: #fff; 
+            display: flex; 
+            justify-content: center; 
+            width: 100%; 
+            z-index: 10;
+        }
+        .input-bar { flex: 1; max-width: 720px; background: #f3f4f6; border: 1px solid #e5e7eb; border-radius: 35px; display: flex; align-items: center; padding: 5px 10px 5px 18px; }
+        .input-bar input { flex: 1; background: transparent; border: none; padding: 12px; font-size: 16px; outline: none; min-width: 0; }
+        
+        /* --- Styles for other UI elements --- */
         pre { background: #1e1e1e; color: #d4d4d4; padding: 45px 15px 15px 15px; border-radius: 12px; margin: 15px 0; overflow-x: auto; position: relative; font-family: 'Consolas', monospace; font-size: 14px; width: 100%; border: 1px solid #333; }
         code { font-family: 'Consolas', monospace; white-space: pre-wrap; }
         .copy-code-btn { position: absolute; top: 10px; right: 12px; background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.2); padding: 5px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; z-index: 10; }
 
-        .msg-menu { position: fixed; background: #fff; border: 1px solid #ddd; border-radius: 12px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); display: none; z-index: 2000; flex-direction: column; width: 130px; overflow: hidden; }
-        .msg-menu button { padding: 12px; border: none; background: none; text-align: left; font-size: 14px; cursor: pointer; display: flex; align-items: center; gap: 10px; width: 100%; }
-        .msg-menu button:hover { background: #f5f5f5; }
-
-        .bottom-container { padding: 15px 15px 25px 15px; background: #fff; display: flex; justify-content: center; width: 100%; flex-shrink: 0; }
-        .input-bar { flex: 1; max-width: 720px; background: #f3f4f6; border: 1px solid #e5e7eb; border-radius: 35px; display: flex; align-items: center; padding: 5px 10px 5px 18px; }
-        .input-bar input { flex: 1; background: transparent; border: none; padding: 12px; font-size: 16px; outline: none; min-width: 0; }
-        
         #mike-btn, .send-btn { width: 40px; height: 40px; border-radius: 50%; display: flex; justify-content: center; align-items: center; cursor: pointer; border: none; flex-shrink: 0; }
         #mike-btn { font-size: 18px; color: #555; background: transparent; }
         .send-btn { background: #000; color: #fff; margin-left: 5px; }
         #mike-btn.recording { background-color: #000 !important; color: #fff !important; }
 
+        .msg-menu { position: fixed; background: #fff; border: 1px solid #ddd; border-radius: 12px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); display: none; z-index: 2000; flex-direction: column; width: 130px; overflow: hidden; }
+        .msg-menu button { padding: 12px; border: none; background: none; text-align: left; font-size: 14px; cursor: pointer; display: flex; align-items: center; gap: 10px; width: 100%; }
         .new-chat-btn { width: 100%; padding: 14px; background: #000; color: #fff; border: none; border-radius: 12px; cursor: pointer; font-weight: 600; }
     </style>
 </head>
@@ -313,13 +325,19 @@
         typing();
     }
 
-    const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
     recognition.interimResults = true;
     recognition.continuous = true; 
+
     const mikeBtn = document.getElementById('mike-btn');
     const userInput = document.getElementById('user-input');
 
-    mikeBtn.onclick = () => { if (isRecording) { recognition.stop(); } else { recognition.start(); } };
+    mikeBtn.onclick = () => { 
+        if (isRecording) { recognition.stop(); } 
+        else { try { recognition.start(); } catch(e) { console.log("Started"); } } 
+    };
+
     recognition.onstart = () => { isRecording = true; mikeBtn.classList.add('recording'); };
     recognition.onend = () => { isRecording = false; mikeBtn.classList.remove('recording'); };
     recognition.onresult = (e) => {
@@ -370,4 +388,16 @@
             });
             const data = await res.json();
             const aiResponse = data.choices[0].message.content;
-            const aiMsgIdx = chatHistory[activeCha
+            const aiMsgIdx = chatHistory[activeChatIndex].messages.length;
+            chatHistory[activeChatIndex].messages.push({ role: "assistant", content: aiResponse });
+            aiRow.setAttribute('data-index', aiMsgIdx);
+            attachMsgEvents(aiRow);
+            localStorage.setItem('datex_full_history', JSON.stringify(chatHistory));
+            bubble.innerHTML = "";
+            typeEffect(bubble, aiResponse, 5);
+        } catch (e) { bubble.innerText = "Error connecting to AI."; }
+    }
+    document.getElementById('user-input').onkeydown = (e) => { if(e.key === 'Enter') callDatexAPI(); };
+    </script>
+</body>
+</html>
