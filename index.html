@@ -11,7 +11,17 @@
     
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; -webkit-tap-highlight-color: transparent; }
-        body { background-color: #ffffff; color: #333; height: 100vh; display: flex; overflow-x: hidden; width: 100%; }
+        
+        /* Screen Fix: Ensuring body fits Chrome perfectly */
+        body { 
+            background-color: #ffffff; 
+            color: #333; 
+            height: 100vh; 
+            height: 100dvh; 
+            display: flex; 
+            overflow: hidden; 
+            width: 100%; 
+        }
 
         /* --- Sidebar --- */
         .sidebar { position: fixed; top: 0; left: -280px; width: 280px; height: 100%; background: #f9f9f9; border-right: 1px solid #eee; transition: 0.3s; z-index: 1001; display: flex; flex-direction: column; }
@@ -29,8 +39,16 @@
         .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.1); display: none; z-index: 1000; cursor: pointer; }
         .overlay.active { display: block; }
 
-        /* --- Layout --- */
-        .wrapper { flex: 1; display: flex; flex-direction: column; height: 100vh; position: relative; width: 100%; }
+        /* --- Layout Fix: Wrapper constraints --- */
+        .wrapper { 
+            flex: 1; 
+            display: flex; 
+            flex-direction: column; 
+            height: 100%; 
+            position: relative; 
+            width: 100%; 
+            overflow: hidden; 
+        }
         header { display: flex; justify-content: space-between; align-items: center; padding: 12px 20px; border-bottom: 1px solid #f9f9f9; background: #fff; flex-shrink: 0; }
         
         .menu-btn-container { width: 38px; height: 38px; border: 1.5px solid #333; border-radius: 50%; display: flex; flex-direction: column; justify-content: center; align-items: flex-start; padding-left: 9px; cursor: pointer; gap: 4px; }
@@ -45,7 +63,9 @@
         /* --- Chat Screen --- */
         .main-content { flex: 1; display: flex; flex-direction: column; overflow-y: auto; padding: 20px; width: 100%; max-width: 800px; margin: 0 auto; scrollbar-width: none; }
         .welcome-screen { text-align: center; margin-top: 22vh; color: #222; font-size: 24px; font-weight: 500; line-height: 1.0; }
-        .welcome-screen span { display: block; font-size: 42px; letter-spacing: 4px; font-weight: 700; color: #000; margin-top: 2px; } 
+        
+        /* Adjusted margin-top to move DATEX Ai lower as requested */
+        .welcome-screen span { display: block; font-size: 42px; letter-spacing: 4px; font-weight: 700; color: #000; margin-top: 20px; } 
 
         .message-row { display: flex; width: 100%; margin: 15px 0; align-items: flex-start; gap: 12px; }
         .user-row { flex-direction: row-reverse; }
@@ -350,16 +370,4 @@
             });
             const data = await res.json();
             const aiResponse = data.choices[0].message.content;
-            const aiMsgIdx = chatHistory[activeChatIndex].messages.length;
-            chatHistory[activeChatIndex].messages.push({ role: "assistant", content: aiResponse });
-            aiRow.setAttribute('data-index', aiMsgIdx);
-            attachMsgEvents(aiRow);
-            localStorage.setItem('datex_full_history', JSON.stringify(chatHistory));
-            bubble.innerHTML = "";
-            typeEffect(bubble, aiResponse, 5);
-        } catch (e) { bubble.innerText = "Error connecting to AI."; }
-    }
-    document.getElementById('user-input').onkeydown = (e) => { if(e.key === 'Enter') callDatexAPI(); };
-    </script>
-</body>
-</html>
+            const aiMsgIdx = chatHistory[activeCha
