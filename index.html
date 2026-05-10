@@ -21,14 +21,12 @@
             overflow: hidden; 
             width: 100%; 
             position: fixed; 
-            /* Ye code poori website par blue selection ko band kar dega */
             -webkit-user-select: none; 
             -moz-user-select: none; 
             -ms-user-select: none; 
             user-select: none; 
         }
 
-        /* Lekin input aur textarea mein allow karna zaroori hai warna typing ruk jayegi */
         textarea, input {
             -webkit-user-select: auto;
             -moz-user-select: auto;
@@ -181,11 +179,14 @@
         
         .new-chat-btn { width: 100%; padding: 14px; background: #000; color: #fff; border: none; border-radius: 12px; cursor: pointer; font-weight: 600; }
 
+        /* Powerful Link CSS */
         .ai-link {
             color: #1a73e8;
             text-decoration: underline;
-            word-break: break-all;
+            word-break: break-word;
             cursor: pointer;
+            pointer-events: auto; /* Ensures links remain clickable */
+            font-weight: 500;
         }
         .ai-link:hover {
             color: #1557b0;
@@ -281,13 +282,16 @@
             btn.innerHTML = '<i class="fas fa-microphone"></i>';
         };
         recognition.onresult = (e) => {
+            let interimTranscript = "";
             for (let i = e.resultIndex; i < e.results.length; ++i) {
                 if (e.results[i].isFinal) {
                     sessionFinalText += e.results[i][0].transcript;
+                } else {
+                    interimTranscript += e.results[i][0].transcript;
                 }
             }
             const input = document.getElementById('user-input');
-            input.value = sessionFinalText;
+            input.value = sessionFinalText + interimTranscript;
             autoGrow(input);
         };
     }
@@ -384,11 +388,18 @@
 
     function attachMsgEvents(row) {
         row.addEventListener('touchstart', (e) => {
+            // Ignore links for long press so they can be clicked
+            if (e.target.tagName.toLowerCase() === 'a') return; 
+            
             selectedMsgRow = row;
             longPressTimer = setTimeout(() => { showMsgMenu(e); }, 600);
         }, {passive: true});
         row.addEventListener('touchend', () => { clearTimeout(longPressTimer); });
-        row.addEventListener('contextmenu', (e) => { e.preventDefault(); selectedMsgRow = row; showMsgMenu(e); });
+        row.addEventListener('contextmenu', (e) => { 
+            if (e.target.tagName.toLowerCase() === 'a') return;
+            e.preventDefault(); 
+            selectedMsgRow = row; showMsgMenu(e); 
+        });
     }
 
     function showMsgMenu(e) {
@@ -468,9 +479,32 @@
         });
     }
 
+    // NEW BULLETPROOF LINK FORMATTER
     function formatLinksAndStyles(text) {
-        let formatted = text.replace(/\[([^\]]+)\]\((https?:\/\/[^\s]+)\)/g, '<a href="$2" target="_blank" class="ai-link">$1</a>');
+        let formatted = text;
+        
+        // 1. Bold text processing
         formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        
+        // 2. Markdown Links Processing: [Text](URL)
+        formatted = formatted.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" class="ai-link">$1</a>');
+        
+        // 3. Raw URLs Processing: Finds https:// and turns it into a link safely
+        // To prevent breaking already processed HTML tags, we temporarily hide existing <a> tags
+        let tempLinks = [];
+        formatted = formatted.replace(/<a[\s\S]*?<\/a>/g, function(match) {
+            tempLinks.push(match);
+            return `___A_TAG_${tempLinks.length - 1}___`;
+        });
+        
+        // Now convert plain raw URLs
+        formatted = formatted.replace(/(https?:\/\/[^\s<()]+)/g, '<a href="$1" target="_blank" class="ai-link">$1</a>');
+        
+        // Restore the <a> tags back
+        formatted = formatted.replace(/___A_TAG_(\d+)___/g, function(match, index) {
+            return tempLinks[index];
+        });
+        
         return formatted;
     }
 
@@ -575,7 +609,7 @@
                 headers: { 'Authorization': `Bearer ${GROQ_API_KEY}`, 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     "messages": [
-                        { "role": "system", "content": "You are DATEX Ai. Your name is strictly 'DATEX Ai'. You must never identify as Llama, Meta, or OpenAI. If someone asks 'What is your name?' or 'Who are you?', you MUST proudly state that your name is DATEX Ai. Your communication style must be exactly like Google's Gemini - extremely conversational, friendly, and helpful. Balance empathy with candor. Mirror the user's tone. Do not sound robotic. You can solve the world's most difficult math and coding problems and communicate in 7000+ languages. CRITICAL RULE: Do not start conversations by listing your name, creator, or capabilities. Only reveal them if explicitly asked. If asked who created you, your owner, CEO, founder, or co-founder, state you were created and are owned by N.Sujal Kumar, a 16-year-old visionary from India. ALWAYS format links as [Link Text](https://example.com). Wrap code in triple backticks (```)." },
+                        { "role": "system", "content": "You are DATEX Ai. Your name is strictly 'DATEX Ai'. You must never identify as Llama, Meta, or OpenAI. If someone asks 'What is your name?' or 'Who are you?', you MUST proudly state that your name is DATEX Ai. Your communication style must be exactly like Google's Gemini - extremely conversational, friendly, and helpful. Balance empathy with candor. Mirror the user's tone. Do not sound robotic. You can solve the world's most difficult math and coding problems and communicate in 7000+ languages. CRITICAL RULE: Do not start conversations by listing your name, creator, or capabilities. Only reveal them if explicitly asked. If asked who created you, your owner, CEO, founder, or co-founder, state you were created and are owned by N.Sujal Kumar, a 16-year-old visionary from India. ALWAYS provide clickable links. Wrap code in triple backticks (```)." },
                         ...chatHistory[activeChatIndex].messages
                     ],
                     "model": "llama-3.3-70b-versatile"
