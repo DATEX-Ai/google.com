@@ -217,6 +217,7 @@
 
         recognition.onstart = () => { 
             isRecording = true; 
+            // Hum textbox ka current content base banate hain
             finalTranscript = document.getElementById('user-input').value; 
             if(finalTranscript.length > 0 && !finalTranscript.endsWith(" ")) {
                 finalTranscript += " ";
@@ -225,28 +226,27 @@
             btn.classList.add('recording'); 
             btn.innerHTML = '<div class="stop-square"></div>';
         };
+        
         recognition.onend = () => { 
             isRecording = false; 
             const btn = document.getElementById('mike-btn');
             btn.classList.remove('recording'); 
             btn.innerHTML = '<i class="fas fa-microphone"></i>';
         };
+
         recognition.onresult = (e) => {
             let interimTranscript = "";
-            let currentFinal = "";
             
+            // Sabse bada change yahan hai: Hum e.resultIndex se loop start karte hain
             for (let i = e.resultIndex; i < e.results.length; ++i) {
+                let transcript = e.results[i][0].transcript;
                 if (e.results[i].isFinal) {
-                    currentFinal += e.results[i][0].transcript;
+                    finalTranscript += transcript;
                 } else {
-                    interimTranscript += e.results[i][0].transcript;
+                    interimTranscript += transcript;
                 }
             }
             
-            if(currentFinal !== "") {
-                finalTranscript += currentFinal;
-            }
-
             const input = document.getElementById('user-input');
             input.value = finalTranscript + interimTranscript;
             autoGrow(input);
@@ -423,27 +423,32 @@
     function typeEffect(element, text, speed) {
         let i = 0;
         let segments = text.split(/(```[\s\S]*?```)/g);
-        let processedText = "";
+        let finalOutput = "";
+        
         segments.forEach(seg => {
             if (seg.startsWith("```") && seg.endsWith("```")) {
                 let codeContent = seg.substring(3, seg.length - 3).trim();
-                processedText += `<pre><button class="copy-code-btn" onclick="copyCode(this)">Copy</button><code>${escapeHTML(codeContent)}</code></pre>`;
-            } else { processedText += seg; }
+                finalOutput += `<pre><button class="copy-code-btn" onclick="copyCode(this)">Copy</button><code>${escapeHTML(codeContent)}</code></pre>`;
+            } else { 
+                finalOutput += seg.replace(/\n/g, "<br>"); 
+            }
         });
 
         function typing() {
-            if (i < processedText.length) {
-                if (processedText.charAt(i) === '<') {
-                    let tagEnd = processedText.indexOf('>', i);
-                    element.innerHTML += processedText.substring(i, tagEnd + 1);
+            if (i < finalOutput.length) {
+                if (finalOutput.charAt(i) === '<') {
+                    let tagEnd = finalOutput.indexOf('>', i);
+                    element.innerHTML += finalOutput.substring(i, tagEnd + 1);
                     i = tagEnd + 1;
                 } else {
-                    element.innerHTML += (processedText.charAt(i) === '\n') ? "<br>" : processedText.charAt(i);
+                    element.innerHTML += finalOutput.charAt(i);
                     i++;
                 }
                 setTimeout(typing, speed);
                 document.getElementById('chat-container').scrollTop = document.getElementById('chat-container').scrollHeight;
-            } else if(window.MathJax) { MathJax.typesetPromise([element]); }
+            } else if(window.MathJax) { 
+                MathJax.typesetPromise([element]); 
+            }
         }
         typing();
     }
@@ -484,7 +489,7 @@
                 headers: { 'Authorization': `Bearer ${GROQ_API_KEY}`, 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     "messages": [
-                        { "role": "system", "content": "Your name is DATEX Ai. You are a super-intelligent AI peer. If asked about your Founder, CEO, Creator, or Owner, always state that you were created and are owned by N.Sujal Kumar, who is a 16-year-old visionary from India. Only mention these details if explicitly asked. Rules: 1. No code or math unless requested. 2. Concise, witty Gemini-style tone. 3. Support 7100+ languages. 4. Wrap code in triple backticks (```) for the UI to render copy buttons." },
+                        { "role": "system", "content": "Your name is DATEX Ai. You are a super-intelligent AI peer. If asked about your Founder, CEO, Creator, or Owner, always state that you were created and are owned by N.Sujal Kumar, who is a 16-year-old visionary from India. Only mention these details if explicitly asked. Rules: 1. Always wrap code in triple backticks (```) with language name. 2. Concise, witty Gemini-style tone. 3. Support 7100+ languages." },
                         ...chatHistory[activeChatIndex].messages
                     ],
                     "model": "llama-3.3-70b-versatile"
