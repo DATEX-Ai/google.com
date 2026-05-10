@@ -173,7 +173,7 @@
                     <div class="menu-line line-3"></div>
                 </div>
             </div>
-            <div class="header-center"><div class="model-name">DATEX Ai Model</div><div class="version-pill">Fast 1.5</div></div>
+            <div class="header-center"><div class="model-name">DATEX Ai Model</div><div class="version-pill">Fast 1.5 Pro</div></div>
             <div class="header-right"><div class="logo-container"><img src="logo.jpg.jpg" alt="Logo"></div></div>
         </header>
 
@@ -201,23 +201,22 @@
     let longPressTimer;
     let isRecording = false;
     let activeChatIndex = -1;
-    let finalTranscript = ""; // Track final text separately
 
     function autoGrow(element) {
         element.style.height = "5px";
         element.style.height = (element.scrollHeight) + "px";
     }
 
+    // --- MIC FIX: NO REPETITION ---
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     let recognition;
     if (SpeechRecognition) {
         recognition = new SpeechRecognition();
-        recognition.interimResults = true; // Enabled interim results for live typing
+        recognition.interimResults = true; 
         recognition.continuous = true;
 
         recognition.onstart = () => { 
             isRecording = true; 
-            finalTranscript = document.getElementById('user-input').value; 
             const btn = document.getElementById('mike-btn');
             btn.classList.add('recording'); 
             btn.innerHTML = '<div class="stop-square"></div>';
@@ -229,16 +228,14 @@
             btn.innerHTML = '<i class="fas fa-microphone"></i>';
         };
         recognition.onresult = (e) => {
-            let interimTranscript = "";
-            for (let i = e.resultIndex; i < e.results.length; ++i) {
-                if (e.results[i].isFinal) {
-                    finalTranscript += e.results[i][0].transcript;
-                } else {
-                    interimTranscript += e.results[i][0].transcript;
-                }
+            let final = "";
+            let interim = "";
+            for (let i = 0; i < e.results.length; ++i) {
+                if (e.results[i].isFinal) { final += e.results[i][0].transcript; }
+                else { interim += e.results[i][0].transcript; }
             }
             const input = document.getElementById('user-input');
-            input.value = finalTranscript + interimTranscript;
+            input.value = final + interim;
             autoGrow(input);
         };
     }
@@ -331,71 +328,19 @@
 
     function showMsgMenu(e) {
         const menu = document.getElementById('msg-menu');
-        const editBtn = document.getElementById('edit-btn-ui');
-        const deleteBtn = document.getElementById('delete-btn-ui');
-        if(selectedMsgRow.classList.contains('ai-row')) {
-            editBtn.style.display = 'none';
-            deleteBtn.style.display = 'none';
-        } else {
-            editBtn.style.display = 'flex';
-            deleteBtn.style.display = 'flex';
-        }
         const x = e.touches ? e.touches[0].clientX : e.clientX;
         const y = e.touches ? e.touches[0].clientY : e.clientY;
         menu.style.display = 'flex';
         menu.style.left = Math.min(x, window.innerWidth - 150) + 'px';
         menu.style.top = Math.min(y, window.innerHeight - 150) + 'px';
-        if(window.navigator.vibrate) window.navigator.vibrate(50);
     }
 
     function hideMsgMenu() { document.getElementById('msg-menu').style.display = 'none'; }
-
-    function copyMsg() {
-        const text = selectedMsgRow.querySelector('.bubble').innerText;
-        navigator.clipboard.writeText(text).then(() => { hideMsgMenu(); });
-    }
-
-    function editMsg() {
-        const msgIdx = parseInt(selectedMsgRow.getAttribute('data-index'));
-        const userText = selectedMsgRow.querySelector('.bubble').innerText;
-        const input = document.getElementById('user-input');
-        input.value = userText;
-        autoGrow(input);
-        input.focus();
-        if (chatHistory[activeChatIndex].messages[msgIdx + 1] && 
-            chatHistory[activeChatIndex].messages[msgIdx + 1].role === "assistant") {
-            chatHistory[activeChatIndex].messages.splice(msgIdx, 2);
-        } else {
-            chatHistory[activeChatIndex].messages.splice(msgIdx, 1);
-        }
-        localStorage.setItem('datex_full_history', JSON.stringify(chatHistory));
-        loadSelectedChat(activeChatIndex, false);
-        hideMsgMenu();
-    }
-
-    function deleteSelectedMsg() {
-        if(selectedMsgRow && activeChatIndex !== -1) {
-            const msgIdx = parseInt(selectedMsgRow.getAttribute('data-index'));
-            chatHistory[activeChatIndex].messages.splice(msgIdx, 1);
-            localStorage.setItem('datex_full_history', JSON.stringify(chatHistory));
-            loadSelectedChat(activeChatIndex, false);
-        }
-        hideMsgMenu();
-    }
-
-    function copyCode(btn) {
-        const code = btn.parentElement.querySelector('code').innerText;
-        navigator.clipboard.writeText(code).then(() => {
-            btn.innerText = "Copied!";
-            setTimeout(() => { btn.innerText = "Copy"; }, 2000);
-        });
-    }
-
-    function escapeHTML(str) {
-        return str.replace(/[&<>"']/g, function(m) {
-            return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m];
-        });
-    }
+    function copyMsg() { const text = selectedMsgRow.querySelector('.bubble').innerText; navigator.clipboard.writeText(text).then(() => { hideMsgMenu(); }); }
+    function editMsg() { const msgIdx = parseInt(selectedMsgRow.getAttribute('data-index')); const userText = selectedMsgRow.querySelector('.bubble').innerText; const input = document.getElementById('user-input'); input.value = userText; autoGrow(input); input.focus(); chatHistory[activeChatIndex].messages.splice(msgIdx, 2); loadSelectedChat(activeChatIndex, false); hideMsgMenu(); }
+    function deleteSelectedMsg() { if(selectedMsgRow && activeChatIndex !== -1) { const msgIdx = parseInt(selectedMsgRow.getAttribute('data-index')); chatHistory[activeChatIndex].messages.splice(msgIdx, 1); localStorage.setItem('datex_full_history', JSON.stringify(chatHistory)); loadSelectedChat(activeChatIndex, false); } hideMsgMenu(); }
+    function copyCode(btn) { const code = btn.parentElement.querySelector('code').innerText; navigator.clipboard.writeText(code).then(() => { btn.innerText = "Copied!"; setTimeout(() => { btn.innerText = "Copy"; }, 2000); }); }
+    function escapeHTML(str) { return str.replace(/[&<>"']/g, function(m) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]; }); }
 
     function renderStoredContent(element, text) {
         let segments = text.split(/(```[\s\S]*?```)/g);
@@ -411,31 +356,28 @@
     }
 
     function typeEffect(element, text, speed) {
-        let i = 0;
         let segments = text.split(/(```[\s\S]*?```)/g);
-        let processedText = "";
-        segments.forEach(seg => {
+        let currentSeg = 0;
+        function process() {
+            if (currentSeg >= segments.length) { if(window.MathJax) MathJax.typesetPromise([element]); return; }
+            let seg = segments[currentSeg];
             if (seg.startsWith("```") && seg.endsWith("```")) {
-                let codeContent = seg.substring(3, seg.length - 3).trim();
-                processedText += `<pre><button class="copy-code-btn" onclick="copyCode(this)">Copy</button><code>${escapeHTML(codeContent)}</code></pre>`;
-            } else { processedText += seg; }
-        });
-
-        function typing() {
-            if (i < processedText.length) {
-                if (processedText.charAt(i) === '<') {
-                    let tagEnd = processedText.indexOf('>', i);
-                    element.innerHTML += processedText.substring(i, tagEnd + 1);
-                    i = tagEnd + 1;
-                } else {
-                    element.innerHTML += (processedText.charAt(i) === '\n') ? "<br>" : processedText.charAt(i);
-                    i++;
+                let code = seg.substring(3, seg.length - 3).trim();
+                element.innerHTML += `<pre><button class="copy-code-btn" onclick="copyCode(this)">Copy</button><code>${escapeHTML(code)}</code></pre>`;
+                currentSeg++; process();
+            } else {
+                let i = 0;
+                function t() {
+                    if (i < seg.length) {
+                        element.innerHTML += (seg.charAt(i) === '\n') ? "<br>" : seg.charAt(i);
+                        i++; document.getElementById('chat-container').scrollTop = document.getElementById('chat-container').scrollHeight;
+                        setTimeout(t, speed);
+                    } else { currentSeg++; process(); }
                 }
-                setTimeout(typing, speed);
-                document.getElementById('chat-container').scrollTop = document.getElementById('chat-container').scrollHeight;
-            } else if(window.MathJax) { MathJax.typesetPromise([element]); }
+                t();
+            }
         }
-        typing();
+        process();
     }
 
     async function callDatexAPI() {
@@ -459,7 +401,6 @@
         addUserMessageToUI(message, false, currentMsgIdx);
         input.value = "";
         input.style.height = "auto";
-        finalTranscript = ""; // Reset for next mic session
 
         const container = document.getElementById('chat-container');
         const aiRow = document.createElement('div');
@@ -474,7 +415,7 @@
                 headers: { 'Authorization': `Bearer ${GROQ_API_KEY}`, 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     "messages": [
-                        { "role": "system", "content": "Your name is DATEX Ai. You are a super-intelligent AI peer. If asked about your Founder, CEO, Creator, or Owner, always state that you were created and are owned by N.Sujal Kumar, who is a 16-year-old visionary from India. Only mention these details if explicitly asked. Rules: 1. No code or math unless requested. 2. Concise, witty Gemini-style tone. 3. Support 7100+ languages. 4. Wrap code in triple backticks (```) for the UI to render copy buttons." },
+                        { "role": "system", "content": "Your name is DATEX Ai. Created and owned by N.Sujal Kumar (16-year-old visionary from India). Rules: 1. No code/math unless requested. 2. Tone: Gemini-style. 3. Always wrap requested code in triple backticks." },
                         ...chatHistory[activeChatIndex].messages
                     ],
                     "model": "llama-3.3-70b-versatile"
@@ -482,9 +423,8 @@
             });
             const data = await res.json();
             const aiResponse = data.choices[0].message.content;
-            const aiMsgIdx = chatHistory[activeChatIndex].messages.length;
             chatHistory[activeChatIndex].messages.push({ role: "assistant", content: aiResponse });
-            aiRow.setAttribute('data-index', aiMsgIdx);
+            aiRow.setAttribute('data-index', chatHistory[activeChatIndex].messages.length - 1);
             attachMsgEvents(aiRow);
             localStorage.setItem('datex_full_history', JSON.stringify(chatHistory));
             bubble.innerHTML = "";
