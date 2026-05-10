@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content">
     <title>DATEX-Ai.com</title>
     <link rel="icon" type="image/jpeg" href="logo.jpg.jpg">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -59,7 +59,21 @@
         .logo-container img { width: 42px; height: 42px; border-radius: 50%; object-fit: cover; border: 1.5px solid #eee; }
 
         .main-content { flex: 1; display: flex; flex-direction: column; overflow-y: auto; padding: 10px 20px 140px 20px; width: 100%; max-width: 800px; margin: 0 auto; scrollbar-width: none; }
-        .welcome-screen { text-align: center; margin-top: 15vh; color: #222; font-size: 24px; font-weight: 500; line-height: 1.0; }
+        
+        /* Fixed: Centered welcome screen vertically and horizontally */
+        .welcome-screen { 
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100%;
+            flex: 1;
+            text-align: center; 
+            color: #222; 
+            font-size: 24px; 
+            font-weight: 500; 
+            line-height: 1.0; 
+        }
         .welcome-screen span { display: block; font-size: 42px; letter-spacing: 4px; font-weight: 700; color: #000; margin-top: 25px; } 
 
         .message-row { display: flex; width: 100%; margin: 15px 0; align-items: flex-start; gap: 12px; }
@@ -70,7 +84,6 @@
         .ai-bubble { background-color: #fff; border: 1px solid #e5e7eb; border-bottom-left-radius: 4px; }
         .avatar { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; border: 1px solid #eee; flex-shrink: 0; }
 
-        /* --- Floating Input Bar: Clean Gemini Look --- */
         .bottom-container { 
             position: fixed; 
             bottom: 12px; 
@@ -109,7 +122,9 @@
         #mike-btn, .send-btn { width: 44px; height: 44px; border-radius: 50%; display: flex; justify-content: center; align-items: center; cursor: pointer; border: none; flex-shrink: 0; }
         #mike-btn { font-size: 20px; color: #555; background: transparent; }
         .send-btn { background: #000; color: #fff; margin-left: 10px; font-size: 18px; }
-        #mike-btn.recording { color: #ff4d4d !important; }
+        
+        #mike-btn.recording { background-color: #000 !important; color: #fff !important; }
+        .stop-square { width: 12px; height: 12px; background: #fff; border-radius: 2px; }
 
         pre { background: #1e1e1e; color: #d4d4d4; padding: 45px 15px 15px 15px; border-radius: 12px; margin: 15px 0; overflow-x: auto; position: relative; font-family: 'Consolas', monospace; font-size: 14px; width: 100%; border: 1px solid #333; }
         code { font-family: 'Consolas', monospace; white-space: pre-wrap; }
@@ -173,7 +188,6 @@
     let isRecording = false;
     let activeChatIndex = -1;
 
-    // --- Fixed Speech Recognition Section ---
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     let recognition;
     if (SpeechRecognition) {
@@ -181,8 +195,18 @@
         recognition.interimResults = true;
         recognition.continuous = true;
 
-        recognition.onstart = () => { isRecording = true; document.getElementById('mike-btn').classList.add('recording'); };
-        recognition.onend = () => { isRecording = false; document.getElementById('mike-btn').classList.remove('recording'); };
+        recognition.onstart = () => { 
+            isRecording = true; 
+            const btn = document.getElementById('mike-btn');
+            btn.classList.add('recording'); 
+            btn.innerHTML = '<div class="stop-square"></div>';
+        };
+        recognition.onend = () => { 
+            isRecording = false; 
+            const btn = document.getElementById('mike-btn');
+            btn.classList.remove('recording'); 
+            btn.innerHTML = '<i class="fas fa-microphone"></i>';
+        };
         recognition.onresult = (e) => {
             let transcript = "";
             for (let i = e.resultIndex; i < e.results.length; ++i) {
@@ -193,7 +217,7 @@
     }
 
     document.getElementById('mike-btn').onclick = () => {
-        if (!recognition) return alert("Speech recognition not supported in this browser.");
+        if (!recognition) return;
         if (isRecording) { recognition.stop(); } else { recognition.start(); }
     };
 
