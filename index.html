@@ -87,7 +87,7 @@
         .bubble-container { position: relative; max-width: 88%; display: flex; flex-direction: column; }
         .bubble { padding: 14px 20px; border-radius: 22px; font-size: 16px; line-height: 1.6; word-wrap: break-word; }
         .user-bubble { background-color: #f3f4f6; color: #000; border-bottom-right-radius: 4px; }
-        .ai-bubble { background-color: #fff; border: 1px solid #e5e7eb; border-bottom-left-radius: 4px; }
+        .ai-bubble { background-color: #fff; border: 1px solid #e5e7eb; border-bottom-left-radius: 4px; min-height: 50px;}
         .avatar { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; border: 1px solid #eee; flex-shrink: 0; }
 
         .bottom-container { 
@@ -201,7 +201,6 @@
     let longPressTimer;
     let isRecording = false;
     let activeChatIndex = -1;
-    let finalTranscript = ""; 
 
     function autoGrow(element) {
         element.style.height = "5px";
@@ -217,11 +216,6 @@
 
         recognition.onstart = () => { 
             isRecording = true; 
-            // Hum textbox ka current content base banate hain
-            finalTranscript = document.getElementById('user-input').value; 
-            if(finalTranscript.length > 0 && !finalTranscript.endsWith(" ")) {
-                finalTranscript += " ";
-            }
             const btn = document.getElementById('mike-btn');
             btn.classList.add('recording'); 
             btn.innerHTML = '<div class="stop-square"></div>';
@@ -235,20 +229,24 @@
         };
 
         recognition.onresult = (e) => {
-            let interimTranscript = "";
-            
-            // Sabse bada change yahan hai: Hum e.resultIndex se loop start karte hain
+            let final_transcript = '';
+            let interim_transcript = '';
+
             for (let i = e.resultIndex; i < e.results.length; ++i) {
-                let transcript = e.results[i][0].transcript;
                 if (e.results[i].isFinal) {
-                    finalTranscript += transcript;
+                    final_transcript += e.results[i][0].transcript;
                 } else {
-                    interimTranscript += transcript;
+                    interim_transcript += e.results[i][0].transcript;
                 }
             }
             
+            // Hum textbox ko direct update karenge bina purana content dubara jode
+            // Isse "TuTuTu" stuttering band ho jayegi
             const input = document.getElementById('user-input');
-            input.value = finalTranscript + interimTranscript;
+            if (final_transcript !== "") {
+                input.value += final_transcript;
+            }
+            // Interim ko sirf placeholder jaisa dikhana better hai ya text ke aage
             autoGrow(input);
         };
     }
@@ -412,7 +410,7 @@
         let finalHTML = "";
         segments.forEach(seg => {
             if (seg.startsWith("```") && seg.endsWith("```")) {
-                let codeContent = seg.substring(3, seg.length - 3).trim();
+                let codeContent = seg.substring(3, seg.length - 3).replace(/^[a-z]*\n/, '').trim();
                 finalHTML += `<pre><button class="copy-code-btn" onclick="copyCode(this)">Copy</button><code>${escapeHTML(codeContent)}</code></pre>`;
             } else { finalHTML += seg.replace(/\n/g, "<br>"); }
         });
@@ -421,36 +419,44 @@
     }
 
     function typeEffect(element, text, speed) {
-        let i = 0;
         let segments = text.split(/(```[\s\S]*?```)/g);
-        let finalOutput = "";
+        let currentSegIndex = 0;
         
-        segments.forEach(seg => {
-            if (seg.startsWith("```") && seg.endsWith("```")) {
-                let codeContent = seg.substring(3, seg.length - 3).trim();
-                finalOutput += `<pre><button class="copy-code-btn" onclick="copyCode(this)">Copy</button><code>${escapeHTML(codeContent)}</code></pre>`;
-            } else { 
-                finalOutput += seg.replace(/\n/g, "<br>"); 
-            }
-        });
-
-        function typing() {
-            if (i < finalOutput.length) {
-                if (finalOutput.charAt(i) === '<') {
-                    let tagEnd = finalOutput.indexOf('>', i);
-                    element.innerHTML += finalOutput.substring(i, tagEnd + 1);
-                    i = tagEnd + 1;
+        function processNextSegment() {
+            if (currentSegIndex < segments.length) {
+                let seg = segments[currentSegIndex];
+                if (seg.startsWith("```") && seg.endsWith("```")) {
+                    let codeContent = seg.substring(3, seg.length - 3).replace(/^[a-z]*\n/, '').trim();
+                    let codeHTML = `<pre><button class="copy-code-btn" onclick="copyCode(this)">Copy</button><code>${escapeHTML(codeContent)}</code></pre>`;
+                    element.innerHTML += codeHTML;
+                    currentSegIndex++;
+                    processNextSegment(); // Code blocks ko turant render karega
                 } else {
-                    element.innerHTML += finalOutput.charAt(i);
-                    i++;
+                    let i = 0;
+                    let textSeg = seg.replace(/\n/g, "<br>");
+                    function typeText() {
+                        if (i < textSeg.length) {
+                            if (textSeg.substr(i, 4) === "<br>") {
+                                element.innerHTML += "<br>";
+                                i += 4;
+                            } else {
+                                element.innerHTML += textSeg.charAt(i);
+                                i++;
+                            }
+                            document.getElementById('chat-container').scrollTop = document.getElementById('chat-container').scrollHeight;
+                            setTimeout(typeText, speed);
+                        } else {
+                            currentSegIndex++;
+                            processNextSegment();
+                        }
+                    }
+                    typeText();
                 }
-                setTimeout(typing, speed);
-                document.getElementById('chat-container').scrollTop = document.getElementById('chat-container').scrollHeight;
             } else if(window.MathJax) { 
                 MathJax.typesetPromise([element]); 
             }
         }
-        typing();
+        processNextSegment();
     }
 
     async function callDatexAPI() {
@@ -474,7 +480,6 @@
         addUserMessageToUI(message, false, currentMsgIdx);
         input.value = "";
         input.style.height = "auto";
-        finalTranscript = ""; 
 
         const container = document.getElementById('chat-container');
         const aiRow = document.createElement('div');
@@ -489,7 +494,7 @@
                 headers: { 'Authorization': `Bearer ${GROQ_API_KEY}`, 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     "messages": [
-                        { "role": "system", "content": "Your name is DATEX Ai. You are a super-intelligent AI peer. If asked about your Founder, CEO, Creator, or Owner, always state that you were created and are owned by N.Sujal Kumar, who is a 16-year-old visionary from India. Only mention these details if explicitly asked. Rules: 1. Always wrap code in triple backticks (```) with language name. 2. Concise, witty Gemini-style tone. 3. Support 7100+ languages." },
+                        { "role": "system", "content": "Your name is DATEX Ai. Super-intelligent peer. Created by N.Sujal Kumar, 16-year-old visionary from India. Instructions: ALWAYS wrap code in triple backticks (```). Never output raw HTML/JS unless in backticks. Be concise." },
                         ...chatHistory[activeChatIndex].messages
                     ],
                     "model": "llama-3.3-70b-versatile"
