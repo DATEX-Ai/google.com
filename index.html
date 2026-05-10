@@ -44,26 +44,31 @@
         .welcome-screen { display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100%; flex: 1; text-align: center; color: #222; font-size: 24px; font-weight: 500; }
         .welcome-screen span { display: block; font-size: 42px; letter-spacing: 4px; font-weight: 700; color: #000; margin-top: 5px; } 
 
-        .message-row { display: flex; width: 100%; margin: 15px 0; align-items: flex-start; gap: 12px; }
+        .message-row { display: flex; width: 100%; margin: 15px 0; align-items: flex-start; gap: 12px; position: relative; }
         .user-row { flex-direction: row-reverse; }
-        .bubble { padding: 14px 20px; border-radius: 22px; font-size: 16px; line-height: 1.6; word-wrap: break-word; }
+        .bubble { padding: 14px 20px; border-radius: 22px; font-size: 16px; line-height: 1.6; word-wrap: break-word; user-select: none; -webkit-user-select: none; }
         .user-bubble { background-color: #f3f4f6; color: #000; border-bottom-right-radius: 4px; }
         .ai-bubble { background-color: #fff; border: 1px solid #e5e7eb; border-bottom-left-radius: 4px; }
         
+        /* Custom Context Menu */
+        .context-menu { position: fixed; background: #fff; border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); display: none; z-index: 10000; overflow: hidden; }
+        .context-menu-item { padding: 10px 20px; font-size: 14px; cursor: pointer; color: #333; display: flex; align-items: center; gap: 10px; }
+        .context-menu-item:hover { background: #f5f5f5; }
+        .context-menu-item i { width: 16px; }
+
         .bottom-container { position: fixed; bottom: 0; left: 0; width: 100%; background: #fff; border-top: 1px solid #f0f0f0; padding: 15px 0 35px 0; display: flex; justify-content: center; z-index: 8000; pointer-events: none; }
         .input-bar { width: 92%; max-width: 720px; background: #f3f4f6; border: 1.2px solid #e5e7eb; border-radius: 35px; display: flex; align-items: center; padding: 6px 10px 6px 18px; min-height: 52px; pointer-events: auto; }
         .input-bar textarea { flex: 1; background: transparent; border: none; padding: 10px 0; font-size: 16px; outline: none; color: #1a1a1a; resize: none; max-height: 150px; overflow-y: auto; line-height: 1.4; }
         
         .actions-right { display: flex; align-items: center; gap: 10px; }
-        #mike-btn, .send-btn { width: 40px; height: 40px; border-radius: 50%; display: flex; justify-content: center; align-items: center; cursor: pointer; border: none; background: transparent; }
+        #mike-btn, .send-btn { width: 40px; height: 40px; border-radius: 50%; display: flex; justify-content: center; align-items: center; cursor: pointer; border: none; background: transparent; color: #333; }
         .send-btn { background: #000; color: #fff; font-size: 16px; }
-        #mike-btn.recording { color: #ff4d4d; background: #ffebeb; }
         
         pre { background: #1e1e1e !important; color: #d4d4d4 !important; padding: 45px 15px 15px 15px; border-radius: 12px; margin: 15px 0; overflow-x: auto; position: relative; }
-        .code-copy-btn { position: absolute; top: 10px; right: 12px; background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.2); padding: 5px 10px; border-radius: 6px; font-size: 12px; cursor: pointer; z-index: 10; }
     </style>
 </head>
 <body>
+    <div id="custom-context-menu" class="context-menu"></div>
     <div class="overlay" id="overlay" onclick="toggleSidebar()"></div>
     <div class="sidebar" id="sidebar">
         <div class="sidebar-content">
@@ -100,8 +105,7 @@
 
     function autoGrow(element) { element.style.height = "auto"; element.style.height = (element.scrollHeight) + "px"; }
     function toggleSidebar() { document.getElementById('sidebar').classList.toggle('active'); document.getElementById('overlay').classList.toggle('active'); }
-    function createNewChat() { isNewSession = true; activeChatIndex = -1; document.getElementById('chat-container').innerHTML = `<div class="welcome-screen">Welcome To<br><span>DATEX Ai</span></div>`; if(document.getElementById('sidebar').classList.contains('active')) toggleSidebar(); }
-
+    
     function renderChatList() {
         const list = document.getElementById('chat-list'); list.innerHTML = "";
         chatHistory.slice().reverse().forEach((chat, idx) => {
@@ -120,40 +124,40 @@
         localStorage.setItem('datex_full_history', JSON.stringify(chatHistory)); 
         renderChatList(); 
         if(chatHistory.length === 0 || activeChatIndex === idx) {
-            // Hum sidebar close nahi karenge as per request
-            createNewChatNoToggle();
+            isNewSession = true; activeChatIndex = -1;
+            document.getElementById('chat-container').innerHTML = `<div class="welcome-screen">Welcome To<br><span>DATEX Ai</span></div>`;
         } 
     }
 
-    // New function to reset without closing sidebar
-    function createNewChatNoToggle() {
-        isNewSession = true; activeChatIndex = -1; 
-        document.getElementById('chat-container').innerHTML = `<div class="welcome-screen">Welcome To<br><span>DATEX Ai</span></div>`;
-    }
+    function createNewChat() { isNewSession = true; activeChatIndex = -1; document.getElementById('chat-container').innerHTML = `<div class="welcome-screen">Welcome To<br><span>DATEX Ai</span></div>`; if(document.getElementById('sidebar').classList.contains('active')) toggleSidebar(); }
 
     function loadSelectedChat(idx, toggle) { 
         if(!chatHistory[idx]) return;
         activeChatIndex = idx; isNewSession = false; 
         const cont = document.getElementById('chat-container');
         cont.innerHTML = ""; 
-        chatHistory[idx].messages.forEach((msg) => { msg.role === "user" ? addUserMessageToUI(msg.content) : addAiMessageToUI(msg.content, false); }); 
+        chatHistory[idx].messages.forEach((msg, mIdx) => { 
+            msg.role === "user" ? addUserMessageToUI(msg.content, mIdx) : addAiMessageToUI(msg.content, false, mIdx); 
+        }); 
         if(toggle) toggleSidebar(); 
     }
 
-    function addUserMessageToUI(text) { 
+    function addUserMessageToUI(text, mIdx) { 
         const cont = document.getElementById('chat-container'); 
         if(document.querySelector('.welcome-screen')) document.querySelector('.welcome-screen').remove(); 
         const row = document.createElement('div'); row.className = 'message-row user-row';
         row.innerHTML = `<div class="bubble user-bubble">${text}</div>`;
+        setupLongPress(row, text, true, mIdx);
         cont.appendChild(row); cont.scrollTop = cont.scrollHeight; 
     }
     
-    function addAiMessageToUI(text, isNew) { 
+    function addAiMessageToUI(text, isNew, mIdx) { 
         const cont = document.getElementById('chat-container'); 
         const row = document.createElement('div'); row.className = 'message-row ai-row';
         row.innerHTML = `<img src="logo.jpg.jpg" style="width:34px; height:34px; border-radius:50%; margin-right:12px; border:1px solid #eee;"><div class="bubble ai-bubble"></div>`; 
         const bubble = row.querySelector('.ai-bubble'); cont.appendChild(row); 
         if(isNew) { typeEffect(bubble, text); } else { bubble.innerHTML = marked.parse(text); }
+        setupLongPress(row, text, false, mIdx);
         cont.scrollTop = cont.scrollHeight; 
     }
 
@@ -162,24 +166,85 @@
         function typing() {
             if (i <= text.length) {
                 el.innerHTML = marked.parse(text.substring(0, i));
-                const cont = document.getElementById('chat-container');
-                cont.scrollTop = cont.scrollHeight; 
+                document.getElementById('chat-container').scrollTop = document.getElementById('chat-container').scrollHeight; 
                 i++; setTimeout(typing, 5);
             }
         }
         typing();
     }
 
+    // --- Long Press Logic ---
+    function setupLongPress(element, text, isUser, mIdx) {
+        let timer;
+        const start = (e) => {
+            timer = setTimeout(() => showContextMenu(e, text, isUser, mIdx), 600);
+        };
+        const cancel = () => clearTimeout(timer);
+        element.addEventListener('touchstart', start);
+        element.addEventListener('touchend', cancel);
+        element.addEventListener('mousedown', start);
+        element.addEventListener('mouseup', cancel);
+    }
+
+    function showContextMenu(e, text, isUser, mIdx) {
+        e.preventDefault();
+        const menu = document.getElementById('custom-context-menu');
+        let html = `<div class="context-menu-item" onclick="copyText('${text.replace(/'/g, "\\'")}')"><i class="fas fa-copy"></i> Copy</div>`;
+        if(isUser) {
+            html += `<div class="context-menu-item" onclick="editMsg(${mIdx})"><i class="fas fa-edit"></i> Edit</div>
+                     <div class="context-menu-item" onclick="deleteMsg(${mIdx})" style="color:red;"><i class="fas fa-trash"></i> Delete</div>`;
+        }
+        menu.innerHTML = html;
+        menu.style.display = 'block';
+        const x = e.touches ? e.touches[0].clientX : e.clientX;
+        const y = e.touches ? e.touches[0].clientY : e.clientY;
+        menu.style.left = x + 'px';
+        menu.style.top = y + 'px';
+    }
+
+    window.onclick = () => document.getElementById('custom-context-menu').style.display = 'none';
+
+    window.copyText = (t) => { navigator.clipboard.writeText(t); document.getElementById('custom-context-menu').style.display = 'none'; };
+    window.deleteMsg = (idx) => { 
+        chatHistory[activeChatIndex].messages.splice(idx, 1);
+        saveAndReload();
+    };
+    window.editMsg = (idx) => {
+        const newText = prompt("Edit your message:", chatHistory[activeChatIndex].messages[idx].content);
+        if(newText) {
+            chatHistory[activeChatIndex].messages[idx].content = newText;
+            saveAndReload();
+        }
+    };
+    function saveAndReload() {
+        localStorage.setItem('datex_full_history', JSON.stringify(chatHistory));
+        loadSelectedChat(activeChatIndex, false);
+    }
+
+    // --- Mike Feature (Stays Black) ---
+    let recognition;
+    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        recognition = new SpeechRecognition();
+        recognition.onresult = (event) => {
+            const transcript = event.results[0][0].transcript;
+            document.getElementById('user-input').value = transcript;
+            autoGrow(document.getElementById('user-input'));
+        };
+    }
+    function toggleVoice() { if(recognition) recognition.start(); }
+
     async function callDatexAPI() {
         const input = document.getElementById('user-input'), msg = input.value.trim();
         if (!msg) return;
         if (isNewSession) { chatHistory.push({ title: msg.substring(0,30), messages: [] }); activeChatIndex = chatHistory.length - 1; isNewSession = false; }
+        const mIdx = chatHistory[activeChatIndex].messages.length;
         chatHistory[activeChatIndex].messages.push({ role: "user", content: msg });
-        addUserMessageToUI(msg);
+        addUserMessageToUI(msg, mIdx);
         input.value = ""; input.style.height = "auto";
         const aiRow = document.createElement('div'); aiRow.className = 'message-row ai-row';
         aiRow.innerHTML = `<img src="logo.jpg.jpg" style="width:34px; height:34px; border-radius:50%; margin-right:12px; border:1px solid #eee;"><div class="bubble ai-bubble">Thinking...</div>`;
-        document.getElementById('chat-container').appendChild(aiRow); const bubble = aiRow.querySelector('.ai-bubble');
+        document.getElementById('chat-container').appendChild(aiRow); 
         try {
             const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
                 method: 'POST', headers: { 'Authorization': `Bearer ${GROQ_API_KEY}`, 'Content-Type': 'application/json' },
@@ -190,36 +255,12 @@
             });
             const data = await res.json();
             const aiRes = data.choices[0].message.content;
+            const aiMIdx = chatHistory[activeChatIndex].messages.length;
             chatHistory[activeChatIndex].messages.push({ role: "assistant", content: aiRes });
             localStorage.setItem('datex_full_history', JSON.stringify(chatHistory));
-            renderChatList(); bubble.innerHTML = ""; typeEffect(bubble, aiRes);
-        } catch (e) { bubble.innerText = "Error connecting to AI."; }
+            renderChatList(); aiRow.remove(); addAiMessageToUI(aiRes, true, aiMIdx);
+        } catch (e) { aiRow.querySelector('.ai-bubble').innerText = "Error."; }
     }
-
-    // --- Mike/Voice Recognition Feature ---
-    let recognition;
-    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        recognition = new SpeechRecognition();
-        recognition.continuous = false;
-        recognition.interimResults = false;
-        recognition.lang = 'en-US';
-
-        recognition.onstart = () => { document.getElementById('mike-btn').classList.add('recording'); };
-        recognition.onend = () => { document.getElementById('mike-btn').classList.remove('recording'); };
-        recognition.onresult = (event) => {
-            const transcript = event.results[0][0].transcript;
-            const inputField = document.getElementById('user-input');
-            inputField.value = transcript;
-            autoGrow(inputField);
-        };
-    }
-
-    function toggleVoice() {
-        if (!recognition) { alert("Speech recognition not supported in this browser."); return; }
-        recognition.start();
-    }
-    // --------------------------------------
 
     document.getElementById('user-input').addEventListener('keydown', (e) => { if(e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); callDatexAPI(); } });
     window.onload = () => { renderChatList(); if(chatHistory.length > 0) loadSelectedChat(chatHistory.length - 1, false); };
