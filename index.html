@@ -58,20 +58,7 @@
             width: 100%; 
             overflow: hidden; 
         }
-        
-        /* HEADER MEIN CHANE KIYA GAYA HAI: position: sticky aur top: 0 jisse yeh scroll na ho */
-        header { 
-            display: flex; 
-            justify-content: space-between; 
-            align-items: center; 
-            padding: 12px 20px; 
-            border-bottom: 1px solid #f9f9f9; 
-            background: #fff; 
-            flex-shrink: 0; 
-            z-index: 1000; 
-            position: sticky; 
-            top: 0; 
-        }
+        header { display: flex; justify-content: space-between; align-items: center; padding: 12px 20px; border-bottom: 1px solid #f9f9f9; background: #fff; flex-shrink: 0; z-index: 100; }
         
         .menu-btn-container { width: 38px; height: 38px; border: 1.5px solid #333; border-radius: 50%; display: flex; flex-direction: column; justify-content: center; align-items: flex-start; padding-left: 9px; cursor: pointer; gap: 4px; }
         .menu-line { height: 2px; background: #333; border-radius: 2px; }
@@ -82,18 +69,7 @@
         .version-pill { font-size: 10px; background: #f0f0f0; display: inline-block; padding: 2px 10px; border-radius: 12px; color: #777; border: 1px solid #ddd; }
         .logo-container img { width: 42px; height: 42px; border-radius: 50%; object-fit: cover; border: 1.5px solid #eee; }
 
-        /* MAIN CONTENT MEIN CHANGE KIYA GAYA HAI: bottom padding 140px se 20px kar di gayi hai */
-        .main-content { 
-            flex: 1; 
-            display: flex; 
-            flex-direction: column; 
-            overflow-y: auto; 
-            padding: 10px 20px 20px 20px; 
-            width: 100%; 
-            max-width: 800px; 
-            margin: 0 auto; 
-            scrollbar-width: none; 
-        }
+        .main-content { flex: 1; display: flex; flex-direction: column; overflow-y: auto; padding: 10px 20px 140px 20px; width: 100%; max-width: 800px; margin: 0 auto; scrollbar-width: none; }
         
         .welcome-screen { 
             display: flex;
@@ -125,16 +101,16 @@
         .ai-bubble { background-color: #fff; border: 1px solid #e5e7eb; border-bottom-left-radius: 4px; width: 100%; }
         .avatar { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; border: 1px solid #eee; flex-shrink: 0; }
 
-        /* BOTTOM CONTAINER MEIN CHANGE KIYA GAYA HAI: position fixed ko hatakar relative aur flex-shrink: 0 kar diya gaya hai */
         .bottom-container { 
-            position: relative; 
+            position: fixed; 
+            bottom: 0; 
+            left: 0;
             width: 100%; 
             background: #ffffff; 
             padding: 10px 20px 20px 20px; 
             display: flex; 
             justify-content: center; 
             z-index: 100;
-            flex-shrink: 0;
         }
         .input-bar-wrapper {
             width: 100%;
