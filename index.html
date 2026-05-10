@@ -130,6 +130,12 @@
             max-height: 150px; 
             overflow-y: auto;
             line-height: 1.4;
+            /* Scrollbar hatane ka perfect CSS */
+            scrollbar-width: none; 
+            -ms-overflow-style: none; 
+        }
+        .input-bar textarea::-webkit-scrollbar {
+            display: none; 
         }
         
         #mike-btn, .send-btn { width: 44px; height: 44px; border-radius: 50%; display: flex; justify-content: center; align-items: center; cursor: pointer; border: none; flex-shrink: 0; }
@@ -222,6 +228,7 @@
     let isRecording = false;
     let activeChatIndex = -1;
     let sessionFinalText = ""; 
+    let editingMsgIdx = -1; // Edit state tracker
 
     function autoGrow(element) {
         element.style.height = "5px";
@@ -253,7 +260,6 @@
         };
         recognition.onresult = (e) => {
             let interimTranscript = "";
-            // LOOP FIX: Start from e.resultIndex so we don't duplicate old results
             for (let i = e.resultIndex; i < e.results.length; ++i) {
                 if (e.results[i].isFinal) {
                     sessionFinalText += e.results[i][0].transcript;
@@ -305,6 +311,7 @@
     function loadSelectedChat(index, shouldToggleSidebar = false) {
         activeChatIndex = index;
         isNewSession = false;
+        editingMsgIdx = -1; // Reset edit state when changing chat
         const container = document.getElementById('chat-container');
         container.innerHTML = "";
         chatHistory[index].messages.forEach((msg, msgIdx) => {
@@ -317,6 +324,7 @@
     function createNewChat() {
         isNewSession = true;
         activeChatIndex = -1;
+        editingMsgIdx = -1; // Reset edit state
         document.getElementById('chat-container').innerHTML = `<div class="welcome-screen" id="welcome-screen">Welcome To<br><span>DATEX Ai</span></div>`;
         const input = document.getElementById('user-input');
         input.value = "";
@@ -391,29 +399,15 @@
     }
 
     function editMsg() {
-        const msgIdx = parseInt(selectedMsgRow.getAttribute('data-index'));
+        editingMsgIdx = parseInt(selectedMsgRow.getAttribute('data-index'));
         const userText = selectedMsgRow.querySelector('.bubble').innerText;
         const input = document.getElementById('user-input');
+        
         input.value = userText;
         autoGrow(input);
         input.focus();
         
-        // 1. Delete selected user message
-        chatHistory[activeChatIndex].messages.splice(msgIdx, 1);
-        
-        // 2. Check if the message that shifted to 'msgIdx' is an AI response. If yes, delete it too!
-        if (chatHistory[activeChatIndex].messages[msgIdx] && 
-            chatHistory[activeChatIndex].messages[msgIdx].role === "assistant") {
-            chatHistory[activeChatIndex].messages.splice(msgIdx, 1);
-        }
-
-        localStorage.setItem('datex_full_history', JSON.stringify(chatHistory));
-        
-        if (chatHistory[activeChatIndex].messages.length === 0) {
-            deleteHistoryItem(null, activeChatIndex);
-        } else {
-            loadSelectedChat(activeChatIndex, false);
-        }
+        // Removed delete logic from here! Message will not disappear now until you actually click 'Send'
         hideMsgMenu();
     }
 
@@ -422,10 +416,8 @@
             const msgIdx = parseInt(selectedMsgRow.getAttribute('data-index'));
             const isUserRow = selectedMsgRow.classList.contains('user-row');
 
-            // 1. Delete selected message
             chatHistory[activeChatIndex].messages.splice(msgIdx, 1);
 
-            // 2. If it was a user message, check if the NEXT message (now at msgIdx) is an AI response. If yes, delete it!
             if (isUserRow && 
                 chatHistory[activeChatIndex].messages[msgIdx] && 
                 chatHistory[activeChatIndex].messages[msgIdx].role === "assistant") {
@@ -433,12 +425,12 @@
             }
             
             localStorage.setItem('datex_full_history', JSON.stringify(chatHistory));
+            editingMsgIdx = -1; // Reset edit state just in case
             
-            // Handle if chat is empty after deletion
             if (chatHistory[activeChatIndex].messages.length === 0) {
-                deleteHistoryItem(null, activeChatIndex); // Cleans up history properly
+                deleteHistoryItem(null, activeChatIndex); 
             } else {
-                loadSelectedChat(activeChatIndex, false); // Reload clean chat
+                loadSelectedChat(activeChatIndex, false); 
             }
         }
         hideMsgMenu();
@@ -514,6 +506,11 @@
             chatHistory.push(newChat);
             activeChatIndex = chatHistory.length - 1;
             isNewSession = false;
+        } else if (editingMsgIdx !== -1) {
+            // Delete old message ONLY when the edited message is sent!
+            chatHistory[activeChatIndex].messages.splice(editingMsgIdx);
+            editingMsgIdx = -1;
+            loadSelectedChat(activeChatIndex, false); 
         }
         
         const currentMsgIdx = chatHistory[activeChatIndex].messages.length;
