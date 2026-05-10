@@ -47,7 +47,7 @@
             width: 100%; 
             overflow: hidden; 
         }
-        header { display: flex; justify-content: space-between; align-items: center; padding: 12px 20px; border-bottom: 1px solid #f9f9f9; background: #fff; flex-shrink: 0; }
+        header { display: flex; justify-content: space-between; align-items: center; padding: 12px 20px; border-bottom: 1px solid #f9f9f9; background: #fff; flex-shrink: 0; z-index: 100; }
         
         .menu-btn-container { width: 38px; height: 38px; border: 1.5px solid #333; border-radius: 50%; display: flex; flex-direction: column; justify-content: center; align-items: flex-start; padding-left: 9px; cursor: pointer; gap: 4px; }
         .menu-line { height: 2px; background: #333; border-radius: 2px; }
@@ -58,7 +58,7 @@
         .version-pill { font-size: 10px; background: #f0f0f0; display: inline-block; padding: 2px 10px; border-radius: 12px; color: #777; border: 1px solid #ddd; }
         .logo-container img { width: 42px; height: 42px; border-radius: 50%; object-fit: cover; border: 1.5px solid #eee; }
 
-        .main-content { flex: 1; display: flex; flex-direction: column; overflow-y: auto; padding: 10px 20px 140px 20px; width: 100%; max-width: 800px; margin: 0 auto; scrollbar-width: none; }
+        .main-content { flex: 1; display: flex; flex-direction: column; overflow-y: auto; padding: 10px 20px 160px 20px; width: 100%; max-width: 800px; margin: 0 auto; scrollbar-width: none; }
         
         .welcome-screen { 
             display: flex;
@@ -84,11 +84,23 @@
 
         .message-row { display: flex; width: 100%; margin: 15px 0; align-items: flex-start; gap: 12px; }
         .user-row { flex-direction: row-reverse; }
-        .bubble-container { position: relative; max-width: 88%; display: flex; flex-direction: column; }
+        .bubble-container { position: relative; max-width: 88%; display: flex; flex-direction: column; overflow: hidden; }
         .bubble { padding: 14px 20px; border-radius: 22px; font-size: 16px; line-height: 1.6; word-wrap: break-word; }
         .user-bubble { background-color: #f3f4f6; color: #000; border-bottom-right-radius: 4px; }
-        .ai-bubble { background-color: #fff; border: 1px solid #e5e7eb; border-bottom-left-radius: 4px; }
+        .ai-bubble { background-color: #fff; border: 1px solid #e5e7eb; border-bottom-left-radius: 4px; width: 100%; }
         .avatar { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; border: 1px solid #eee; flex-shrink: 0; }
+
+        /* White Wall / Fade Effect */
+        .input-fade { 
+            position: fixed; 
+            bottom: 80px; 
+            left: 0; 
+            width: 100%; 
+            height: 60px; 
+            background: linear-gradient(to top, #ffffff 30%, rgba(255,255,255,0)); 
+            pointer-events: none; 
+            z-index: 90; 
+        }
 
         .bottom-container { 
             position: fixed; 
@@ -96,7 +108,7 @@
             left: 50%;
             transform: translateX(-50%);
             padding: 0 12px; 
-            background: transparent; 
+            background: #fff; 
             display: flex; 
             justify-content: center; 
             width: 100%; 
@@ -135,8 +147,24 @@
         #mike-btn.recording { background-color: #000 !important; color: #fff !important; }
         .stop-square { width: 12px; height: 12px; background: #fff; border-radius: 2px; }
 
-        pre { background: #1e1e1e; color: #d4d4d4; padding: 45px 15px 15px 15px; border-radius: 12px; margin: 15px 0; overflow-x: auto; position: relative; font-family: 'Consolas', monospace; font-size: 14px; width: 100%; border: 1px solid #333; }
-        code { font-family: 'Consolas', monospace; white-space: pre-wrap; }
+        /* Code Block Styling */
+        pre { 
+            background: #1e1e1e; 
+            color: #d4d4d4; 
+            padding: 45px 15px 15px 15px; 
+            border-radius: 12px; 
+            margin: 15px 0; 
+            overflow-x: auto; 
+            position: relative; 
+            font-family: 'Consolas', monospace; 
+            font-size: 14px; 
+            width: 100%; 
+            max-width: 100%;
+            border: 1px solid #333;
+            white-space: pre-wrap; /* Text wrapping for code */
+            word-break: break-word;
+        }
+        code { font-family: 'Consolas', monospace; }
         .copy-code-btn { position: absolute; top: 10px; right: 12px; background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.2); padding: 5px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; z-index: 10; }
         
         .msg-menu { position: fixed; background: #fff; border: 1px solid #ddd; border-radius: 12px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); display: none; z-index: 2000; flex-direction: column; width: 140px; overflow: hidden; }
@@ -181,6 +209,8 @@
             <div class="welcome-screen" id="welcome-screen">Welcome To<br><span>DATEX Ai</span></div>
         </main>
 
+        <div class="input-fade"></div>
+
         <div class="bottom-container">
             <div class="input-bar">
                 <i class="fas fa-plus" style="color:#777; cursor:pointer; font-size: 18px; margin-right: 12px; margin-bottom: 12px;"></i>
@@ -201,7 +231,7 @@
     let longPressTimer;
     let isRecording = false;
     let activeChatIndex = -1;
-    let finalTranscript = ""; // Track final text separately
+    let transcriptText = ""; 
 
     function autoGrow(element) {
         element.style.height = "5px";
@@ -212,12 +242,11 @@
     let recognition;
     if (SpeechRecognition) {
         recognition = new SpeechRecognition();
-        recognition.interimResults = true; // Enabled interim results for live typing
+        recognition.interimResults = true;
         recognition.continuous = true;
 
         recognition.onstart = () => { 
             isRecording = true; 
-            finalTranscript = document.getElementById('user-input').value; 
             const btn = document.getElementById('mike-btn');
             btn.classList.add('recording'); 
             btn.innerHTML = '<div class="stop-square"></div>';
@@ -230,6 +259,7 @@
         };
         recognition.onresult = (e) => {
             let interimTranscript = "";
+            let finalTranscript = "";
             for (let i = e.resultIndex; i < e.results.length; ++i) {
                 if (e.results[i].isFinal) {
                     finalTranscript += e.results[i][0].transcript;
@@ -238,8 +268,16 @@
                 }
             }
             const input = document.getElementById('user-input');
-            input.value = finalTranscript + interimTranscript;
+            // Logic to prevent duplication: Only append final transcript once
+            if(finalTranscript !== "") {
+                input.value += finalTranscript;
+            }
+            // Temporary show interim results without saving them to input.value permanently yet
+            let currentVal = input.value;
+            input.value = currentVal + interimTranscript;
             autoGrow(input);
+            // Restore actual value for next result
+            input.value = currentVal + (finalTranscript || interimTranscript);
         };
     }
 
@@ -413,29 +451,35 @@
     function typeEffect(element, text, speed) {
         let i = 0;
         let segments = text.split(/(```[\s\S]*?```)/g);
-        let processedText = "";
-        segments.forEach(seg => {
-            if (seg.startsWith("```") && seg.endsWith("```")) {
-                let codeContent = seg.substring(3, seg.length - 3).trim();
-                processedText += `<pre><button class="copy-code-btn" onclick="copyCode(this)">Copy</button><code>${escapeHTML(codeContent)}</code></pre>`;
-            } else { processedText += seg; }
-        });
+        let currentSeg = 0;
 
-        function typing() {
-            if (i < processedText.length) {
-                if (processedText.charAt(i) === '<') {
-                    let tagEnd = processedText.indexOf('>', i);
-                    element.innerHTML += processedText.substring(i, tagEnd + 1);
-                    i = tagEnd + 1;
+        function typeNext() {
+            if (currentSeg < segments.length) {
+                let seg = segments[currentSeg];
+                if (seg.startsWith("```") && seg.endsWith("```")) {
+                    // Render code block instantly to avoid blank box
+                    let codeContent = seg.substring(3, seg.length - 3).trim();
+                    element.innerHTML += `<pre><button class="copy-code-btn" onclick="copyCode(this)">Copy</button><code>${escapeHTML(codeContent)}</code></pre>`;
+                    currentSeg++;
+                    setTimeout(typeNext, speed);
                 } else {
-                    element.innerHTML += (processedText.charAt(i) === '\n') ? "<br>" : processedText.charAt(i);
-                    i++;
+                    // Type normal text
+                    if (i < seg.length) {
+                        element.innerHTML += (seg.charAt(i) === '\n') ? "<br>" : seg.charAt(i);
+                        i++;
+                        setTimeout(typeNext, speed);
+                    } else {
+                        i = 0;
+                        currentSeg++;
+                        setTimeout(typeNext, speed);
+                    }
                 }
-                setTimeout(typing, speed);
                 document.getElementById('chat-container').scrollTop = document.getElementById('chat-container').scrollHeight;
-            } else if(window.MathJax) { MathJax.typesetPromise([element]); }
+            } else if(window.MathJax) { 
+                MathJax.typesetPromise([element]); 
+            }
         }
-        typing();
+        typeNext();
     }
 
     async function callDatexAPI() {
@@ -459,7 +503,6 @@
         addUserMessageToUI(message, false, currentMsgIdx);
         input.value = "";
         input.style.height = "auto";
-        finalTranscript = ""; // Reset for next mic session
 
         const container = document.getElementById('chat-container');
         const aiRow = document.createElement('div');
@@ -474,7 +517,7 @@
                 headers: { 'Authorization': `Bearer ${GROQ_API_KEY}`, 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     "messages": [
-                        { "role": "system", "content": "Your name is DATEX Ai. You are a super-intelligent AI peer. If asked about your Founder, CEO, Creator, or Owner, always state that you were created and are owned by N.Sujal Kumar, who is a 16-year-old visionary from India. Only mention these details if explicitly asked. Rules: 1. No code or math unless requested. 2. Concise, witty Gemini-style tone. 3. Support 7100+ languages. 4. Wrap code in triple backticks (```) for the UI to render copy buttons." },
+                        { "role": "system", "content": "Your name is DATEX Ai. You are a super-intelligent AI peer. If asked about your Founder, CEO, Creator, or Owner, always state that you were created and are owned by N.Sujal Kumar, who is a 16-year-old visionary from India. Rules: 1. Use triple backticks (```) for code. 2. Clear, concise Gemini-style tone." },
                         ...chatHistory[activeChatIndex].messages
                     ],
                     "model": "llama-3.3-70b-versatile"
