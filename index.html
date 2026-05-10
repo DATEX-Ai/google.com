@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>DATEX-Ai.com</title>
+    <title>DATEX Ai.com</title>
     <link rel="icon" type="image/jpeg" href="logo.jpg.jpg">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
@@ -173,7 +173,7 @@
                     <div class="menu-line line-3"></div>
                 </div>
             </div>
-            <div class="header-center"><div class="model-name">DATEX Ai Model</div><div class="version-pill">Fast 1.5 Pro</div></div>
+            <div class="header-center"><div class="model-name">DATEX Ai Model</div><div class="version-pill">Fast 1.5</div></div>
             <div class="header-right"><div class="logo-container"><img src="logo.jpg.jpg" alt="Logo"></div></div>
         </header>
 
@@ -184,7 +184,7 @@
         <div class="bottom-container">
             <div class="input-bar">
                 <i class="fas fa-plus" style="color:#777; cursor:pointer; font-size: 18px; margin-right: 12px; margin-bottom: 12px;"></i>
-                <textarea id="user-input" placeholder="Ask DATEX Anything..." rows="1" oninput="autoGrow(this)"></textarea>
+                <textarea id="user-input" placeholder="Ask DATEX Ai..." rows="1" oninput="autoGrow(this)"></textarea>
                 <div class="actions-right" style="display:flex; align-items:center; margin-bottom: 3px;">
                     <div id="mike-btn"><i class="fas fa-microphone"></i></div>
                     <button class="send-btn" onclick="callDatexAPI()"><i class="fas fa-arrow-up"></i></button>
@@ -201,6 +201,7 @@
     let longPressTimer;
     let isRecording = false;
     let activeChatIndex = -1;
+    let finalTranscript = ""; // Track final text separately
 
     function autoGrow(element) {
         element.style.height = "5px";
@@ -211,11 +212,12 @@
     let recognition;
     if (SpeechRecognition) {
         recognition = new SpeechRecognition();
-        recognition.interimResults = false;
+        recognition.interimResults = true; // Enabled interim results for live typing
         recognition.continuous = true;
 
         recognition.onstart = () => { 
             isRecording = true; 
+            finalTranscript = document.getElementById('user-input').value; 
             const btn = document.getElementById('mike-btn');
             btn.classList.add('recording'); 
             btn.innerHTML = '<div class="stop-square"></div>';
@@ -227,15 +229,17 @@
             btn.innerHTML = '<i class="fas fa-microphone"></i>';
         };
         recognition.onresult = (e) => {
-            let final_transcript = "";
+            let interimTranscript = "";
             for (let i = e.resultIndex; i < e.results.length; ++i) {
-                if (e.results[i].isFinal) { final_transcript += e.results[i][0].transcript; }
+                if (e.results[i].isFinal) {
+                    finalTranscript += e.results[i][0].transcript;
+                } else {
+                    interimTranscript += e.results[i][0].transcript;
+                }
             }
-            if(final_transcript) {
-                const input = document.getElementById('user-input');
-                input.value += (input.value ? " " : "") + final_transcript;
-                autoGrow(input);
-            }
+            const input = document.getElementById('user-input');
+            input.value = finalTranscript + interimTranscript;
+            autoGrow(input);
         };
     }
 
@@ -455,6 +459,7 @@
         addUserMessageToUI(message, false, currentMsgIdx);
         input.value = "";
         input.style.height = "auto";
+        finalTranscript = ""; // Reset for next mic session
 
         const container = document.getElementById('chat-container');
         const aiRow = document.createElement('div');
@@ -469,7 +474,7 @@
                 headers: { 'Authorization': `Bearer ${GROQ_API_KEY}`, 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     "messages": [
-                        { "role": "system", "content": "You are DATEX Ai, an authentic, adaptive AI peer with the cognitive intelligence of Gemini. Guiding principles: 1. Address the user's true intent with insightful, clear, and concise responses. 2. Balance empathy with candor: validate feelings while correcting misinformation directly. 3. Adapt your tone and humor to the user's style. 4. If asked about your Founder, CEO, or Creator, state you are owned and created by N.Sujal Kumar (only when asked). 5. Strictly provide code or complex math only when explicitly requested. 6. Fluent in 7100+ languages. 7. Use LaTeX for formal math $inline$ or $$display$$, and wrap code in triple backticks." },
+                        { "role": "system", "content": "Your name is DATEX Ai. You are a super-intelligent AI peer. If asked about your Founder, CEO, Creator, or Owner, always state that you were created and are owned by N.Sujal Kumar, who is a 16-year-old visionary from India. Only mention these details if explicitly asked. Rules: 1. No code or math unless requested. 2. Concise, witty Gemini-style tone. 3. Support 7100+ languages. 4. Wrap code in triple backticks (```) for the UI to render copy buttons." },
                         ...chatHistory[activeChatIndex].messages
                     ],
                     "model": "llama-3.3-70b-versatile"
