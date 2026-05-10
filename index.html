@@ -221,7 +221,7 @@
     let longPressTimer;
     let isRecording = false;
     let activeChatIndex = -1;
-    let initialInputText = ""; 
+    let sessionFinalText = ""; 
 
     function autoGrow(element) {
         element.style.height = "5px";
@@ -237,10 +237,9 @@
 
         recognition.onstart = () => { 
             isRecording = true; 
-            // Save whatever text is already in the box before speaking
-            initialInputText = document.getElementById('user-input').value; 
-            if (initialInputText.length > 0 && !initialInputText.endsWith(" ")) {
-                initialInputText += " "; 
+            sessionFinalText = document.getElementById('user-input').value; 
+            if (sessionFinalText.length > 0 && !sessionFinalText.endsWith(" ")) {
+                sessionFinalText += " "; 
             }
             const btn = document.getElementById('mike-btn');
             btn.classList.add('recording'); 
@@ -253,18 +252,17 @@
             btn.innerHTML = '<i class="fas fa-microphone"></i>';
         };
         recognition.onresult = (e) => {
-            let sessionFinal = "";
-            let sessionInterim = "";
-            for (let i = 0; i < e.results.length; ++i) {
+            let interimTranscript = "";
+            // LOOP FIX: Start from e.resultIndex so we don't duplicate old results
+            for (let i = e.resultIndex; i < e.results.length; ++i) {
                 if (e.results[i].isFinal) {
-                    sessionFinal += e.results[i][0].transcript;
+                    sessionFinalText += e.results[i][0].transcript;
                 } else {
-                    sessionInterim += e.results[i][0].transcript;
+                    interimTranscript += e.results[i][0].transcript;
                 }
             }
-            // Simply combine original text with new voice input, avoids doubling
             const input = document.getElementById('user-input');
-            input.value = initialInputText + sessionFinal + sessionInterim;
+            input.value = sessionFinalText + interimTranscript;
             autoGrow(input);
         };
     }
@@ -292,16 +290,15 @@
     }
 
     function deleteHistoryItem(event, index) {
-        event.stopPropagation();
+        if(event) event.stopPropagation();
         chatHistory.splice(index, 1);
         localStorage.setItem('datex_full_history', JSON.stringify(chatHistory));
         renderChatList();
         
-        // If the active chat is deleted, clear the screen immediately
         if (activeChatIndex === index) {
             createNewChat();
         } else if (activeChatIndex > index) {
-            activeChatIndex--; // Adjust index if older chat is deleted
+            activeChatIndex--; 
         }
     }
 
@@ -401,36 +398,48 @@
         autoGrow(input);
         input.focus();
         
-        // Delete User msg + Ai response
-        if (chatHistory[activeChatIndex].messages[msgIdx + 1] && 
-            chatHistory[activeChatIndex].messages[msgIdx + 1].role === "assistant") {
-            chatHistory[activeChatIndex].messages.splice(msgIdx, 2);
-        } else {
+        // 1. Delete selected user message
+        chatHistory[activeChatIndex].messages.splice(msgIdx, 1);
+        
+        // 2. Check if the message that shifted to 'msgIdx' is an AI response. If yes, delete it too!
+        if (chatHistory[activeChatIndex].messages[msgIdx] && 
+            chatHistory[activeChatIndex].messages[msgIdx].role === "assistant") {
             chatHistory[activeChatIndex].messages.splice(msgIdx, 1);
         }
+
         localStorage.setItem('datex_full_history', JSON.stringify(chatHistory));
-        loadSelectedChat(activeChatIndex, false);
+        
+        if (chatHistory[activeChatIndex].messages.length === 0) {
+            deleteHistoryItem(null, activeChatIndex);
+        } else {
+            loadSelectedChat(activeChatIndex, false);
+        }
         hideMsgMenu();
     }
 
     function deleteSelectedMsg() {
         if(selectedMsgRow && activeChatIndex !== -1) {
             const msgIdx = parseInt(selectedMsgRow.getAttribute('data-index'));
-            
-            // Delete AI message too if user deletes their prompt
-            if (selectedMsgRow.classList.contains('user-row')) {
-                if (chatHistory[activeChatIndex].messages[msgIdx + 1] && 
-                    chatHistory[activeChatIndex].messages[msgIdx + 1].role === "assistant") {
-                    chatHistory[activeChatIndex].messages.splice(msgIdx, 2);
-                } else {
-                    chatHistory[activeChatIndex].messages.splice(msgIdx, 1);
-                }
-            } else {
+            const isUserRow = selectedMsgRow.classList.contains('user-row');
+
+            // 1. Delete selected message
+            chatHistory[activeChatIndex].messages.splice(msgIdx, 1);
+
+            // 2. If it was a user message, check if the NEXT message (now at msgIdx) is an AI response. If yes, delete it!
+            if (isUserRow && 
+                chatHistory[activeChatIndex].messages[msgIdx] && 
+                chatHistory[activeChatIndex].messages[msgIdx].role === "assistant") {
                 chatHistory[activeChatIndex].messages.splice(msgIdx, 1);
             }
             
             localStorage.setItem('datex_full_history', JSON.stringify(chatHistory));
-            loadSelectedChat(activeChatIndex, false);
+            
+            // Handle if chat is empty after deletion
+            if (chatHistory[activeChatIndex].messages.length === 0) {
+                deleteHistoryItem(null, activeChatIndex); // Cleans up history properly
+            } else {
+                loadSelectedChat(activeChatIndex, false); // Reload clean chat
+            }
         }
         hideMsgMenu();
     }
@@ -511,7 +520,6 @@
         chatHistory[activeChatIndex].messages.push({ role: "user", content: message });
         localStorage.setItem('datex_full_history', JSON.stringify(chatHistory));
         
-        // This instantly updates the sidebar when you send the first message
         renderChatList();
 
         addUserMessageToUI(message, false, currentMsgIdx);
