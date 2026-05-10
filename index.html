@@ -90,13 +90,12 @@
         .ai-bubble { background-color: #fff; border: 1px solid #e5e7eb; border-bottom-left-radius: 4px; width: 100%; }
         .avatar { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; border: 1px solid #eee; flex-shrink: 0; }
 
-        /* Solid White Wall at bottom like Gemini */
         .bottom-container { 
             position: fixed; 
             bottom: 0; 
             left: 0;
             width: 100%; 
-            background: #ffffff; /* This is the solid white wall */
+            background: #ffffff; 
             padding: 10px 20px 20px 20px; 
             display: flex; 
             justify-content: center; 
@@ -104,7 +103,7 @@
         }
         .input-bar-wrapper {
             width: 100%;
-            max-width: 720px; /* Same max width as before */
+            max-width: 720px; 
             display: flex;
         }
         .input-bar { 
@@ -139,7 +138,6 @@
         #mike-btn.recording { background-color: #000 !important; color: #fff !important; }
         .stop-square { width: 12px; height: 12px; background: #fff; border-radius: 2px; }
 
-        /* Code Block Styling (Kept perfectly inside screen) */
         pre { 
             background: #1e1e1e; 
             color: #d4d4d4; 
@@ -223,7 +221,7 @@
     let longPressTimer;
     let isRecording = false;
     let activeChatIndex = -1;
-    let sessionTranscript = ""; // Perfected mic logic variable
+    let initialInputText = ""; 
 
     function autoGrow(element) {
         element.style.height = "5px";
@@ -239,7 +237,11 @@
 
         recognition.onstart = () => { 
             isRecording = true; 
-            sessionTranscript = document.getElementById('user-input').value; // Save whatever is already typed
+            // Save whatever text is already in the box before speaking
+            initialInputText = document.getElementById('user-input').value; 
+            if (initialInputText.length > 0 && !initialInputText.endsWith(" ")) {
+                initialInputText += " "; 
+            }
             const btn = document.getElementById('mike-btn');
             btn.classList.add('recording'); 
             btn.innerHTML = '<div class="stop-square"></div>';
@@ -251,19 +253,18 @@
             btn.innerHTML = '<i class="fas fa-microphone"></i>';
         };
         recognition.onresult = (e) => {
-            let interimTranscript = "";
-            let currentFinal = "";
-            for (let i = e.resultIndex; i < e.results.length; ++i) {
+            let sessionFinal = "";
+            let sessionInterim = "";
+            for (let i = 0; i < e.results.length; ++i) {
                 if (e.results[i].isFinal) {
-                    currentFinal += e.results[i][0].transcript;
+                    sessionFinal += e.results[i][0].transcript;
                 } else {
-                    interimTranscript += e.results[i][0].transcript;
+                    sessionInterim += e.results[i][0].transcript;
                 }
             }
-            sessionTranscript += currentFinal;
+            // Simply combine original text with new voice input, avoids doubling
             const input = document.getElementById('user-input');
-            // This prevents the double typing bug permanently
-            input.value = sessionTranscript + interimTranscript;
+            input.value = initialInputText + sessionFinal + sessionInterim;
             autoGrow(input);
         };
     }
@@ -273,7 +274,10 @@
         if (isRecording) { recognition.stop(); } else { recognition.start(); }
     };
 
-    window.onload = () => { renderChatList(); };
+    window.onload = () => { 
+        renderChatList(); 
+        if(chatHistory.length === 0) createNewChat();
+    };
 
     function renderChatList() {
         const listElement = document.getElementById('chat-list');
@@ -292,7 +296,13 @@
         chatHistory.splice(index, 1);
         localStorage.setItem('datex_full_history', JSON.stringify(chatHistory));
         renderChatList();
-        if (activeChatIndex === index) createNewChat();
+        
+        // If the active chat is deleted, clear the screen immediately
+        if (activeChatIndex === index) {
+            createNewChat();
+        } else if (activeChatIndex > index) {
+            activeChatIndex--; // Adjust index if older chat is deleted
+        }
     }
 
     function loadSelectedChat(index, shouldToggleSidebar = false) {
@@ -311,6 +321,9 @@
         isNewSession = true;
         activeChatIndex = -1;
         document.getElementById('chat-container').innerHTML = `<div class="welcome-screen" id="welcome-screen">Welcome To<br><span>DATEX Ai</span></div>`;
+        const input = document.getElementById('user-input');
+        input.value = "";
+        autoGrow(input);
         if(document.getElementById('sidebar').classList.contains('active')) toggleSidebar();
     }
 
@@ -387,6 +400,8 @@
         input.value = userText;
         autoGrow(input);
         input.focus();
+        
+        // Delete User msg + Ai response
         if (chatHistory[activeChatIndex].messages[msgIdx + 1] && 
             chatHistory[activeChatIndex].messages[msgIdx + 1].role === "assistant") {
             chatHistory[activeChatIndex].messages.splice(msgIdx, 2);
@@ -401,7 +416,19 @@
     function deleteSelectedMsg() {
         if(selectedMsgRow && activeChatIndex !== -1) {
             const msgIdx = parseInt(selectedMsgRow.getAttribute('data-index'));
-            chatHistory[activeChatIndex].messages.splice(msgIdx, 1);
+            
+            // Delete AI message too if user deletes their prompt
+            if (selectedMsgRow.classList.contains('user-row')) {
+                if (chatHistory[activeChatIndex].messages[msgIdx + 1] && 
+                    chatHistory[activeChatIndex].messages[msgIdx + 1].role === "assistant") {
+                    chatHistory[activeChatIndex].messages.splice(msgIdx, 2);
+                } else {
+                    chatHistory[activeChatIndex].messages.splice(msgIdx, 1);
+                }
+            } else {
+                chatHistory[activeChatIndex].messages.splice(msgIdx, 1);
+            }
+            
             localStorage.setItem('datex_full_history', JSON.stringify(chatHistory));
             loadSelectedChat(activeChatIndex, false);
         }
@@ -483,6 +510,8 @@
         const currentMsgIdx = chatHistory[activeChatIndex].messages.length;
         chatHistory[activeChatIndex].messages.push({ role: "user", content: message });
         localStorage.setItem('datex_full_history', JSON.stringify(chatHistory));
+        
+        // This instantly updates the sidebar when you send the first message
         renderChatList();
 
         addUserMessageToUI(message, false, currentMsgIdx);
