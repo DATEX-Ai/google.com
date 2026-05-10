@@ -79,7 +79,7 @@
             letter-spacing: 4px; 
             font-weight: 700; 
             color: #000; 
-            margin-top: 5px; /* Spacing even closer now */
+            margin-top: 5px; 
         } 
 
         .message-row { display: flex; width: 100%; margin: 15px 0; align-items: flex-start; gap: 12px; }
@@ -109,20 +109,24 @@
             border: 1.2px solid #e5e7eb; 
             border-radius: 35px; 
             display: flex; 
-            align-items: center; 
+            align-items: flex-end; 
             padding: 8px 12px 8px 22px; 
-            box-shadow: none; 
             width: 100%;
         }
-        .input-bar input { 
+        
+        .input-bar textarea { 
             flex: 1; 
             background: transparent; 
             border: none; 
-            padding: 12px 0; 
+            padding: 10px 0; 
             font-size: 16px; 
             outline: none; 
             min-width: 0; 
             color: #1a1a1a;
+            resize: none;
+            max-height: 150px; 
+            overflow-y: auto;
+            line-height: 1.4;
         }
         
         #mike-btn, .send-btn { width: 44px; height: 44px; border-radius: 50%; display: flex; justify-content: center; align-items: center; cursor: pointer; border: none; flex-shrink: 0; }
@@ -134,17 +138,22 @@
         pre { background: #1e1e1e; color: #d4d4d4; padding: 45px 15px 15px 15px; border-radius: 12px; margin: 15px 0; overflow-x: auto; position: relative; font-family: 'Consolas', monospace; font-size: 14px; width: 100%; border: 1px solid #333; }
         code { font-family: 'Consolas', monospace; white-space: pre-wrap; }
         .copy-code-btn { position: absolute; top: 10px; right: 12px; background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.2); padding: 5px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; z-index: 10; }
-        .msg-menu { position: fixed; background: #fff; border: 1px solid #ddd; border-radius: 12px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); display: none; z-index: 2000; flex-direction: column; width: 130px; overflow: hidden; }
-        .msg-menu button { padding: 12px; border: none; background: none; text-align: left; font-size: 14px; cursor: pointer; display: flex; align-items: center; gap: 10px; width: 100%; }
+        
+        .msg-menu { position: fixed; background: #fff; border: 1px solid #ddd; border-radius: 12px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); display: none; z-index: 2000; flex-direction: column; width: 140px; overflow: hidden; }
+        .msg-menu button { padding: 12px; border: none; background: none; text-align: left; font-size: 14px; cursor: pointer; display: flex; align-items: center; gap: 10px; width: 100%; border-bottom: 0.5px solid #f0f0f0; }
+        .msg-menu button:last-child { border-bottom: none; }
+        
         .new-chat-btn { width: 100%; padding: 14px; background: #000; color: #fff; border: none; border-radius: 12px; cursor: pointer; font-weight: 600; }
     </style>
 </head>
 <body onclick="hideMsgMenu()">
 
     <div class="overlay" id="overlay" onclick="toggleSidebar()"></div>
+    
     <div id="msg-menu" class="msg-menu">
-        <button onclick="copyMsg()"><i class="fas fa-copy"></i> Copy</button>
-        <button onclick="deleteSelectedMsg()" style="color:red;"><i class="fas fa-trash"></i> Delete</button>
+        <button id="copy-btn-ui" onclick="copyMsg()"><i class="fas fa-copy"></i> Copy</button>
+        <button id="edit-btn-ui" onclick="editMsg()"><i class="fas fa-pen"></i> Edit</button>
+        <button id="delete-btn-ui" onclick="deleteSelectedMsg()" style="color:red;"><i class="fas fa-trash"></i> Delete</button>
     </div>
 
     <div class="sidebar" id="sidebar">
@@ -164,7 +173,7 @@
                     <div class="menu-line line-3"></div>
                 </div>
             </div>
-            <div class="header-center"><div class="model-name">DATEX Ai Model</div><div class="version-pill">Fast 1.5</div></div>
+            <div class="header-center"><div class="model-name">DATEX Ai Model</div><div class="version-pill">Fast 1.5 Pro</div></div>
             <div class="header-right"><div class="logo-container"><img src="logo.jpg.jpg" alt="Logo"></div></div>
         </header>
 
@@ -174,9 +183,9 @@
 
         <div class="bottom-container">
             <div class="input-bar">
-                <i class="fas fa-plus" style="color:#777; cursor:pointer; font-size: 18px; margin-right: 12px;"></i>
-                <input type="text" id="user-input" placeholder="Ask DATEX Anything..." autocomplete="off">
-                <div class="actions-right" style="display:flex; align-items:center;">
+                <i class="fas fa-plus" style="color:#777; cursor:pointer; font-size: 18px; margin-right: 12px; margin-bottom: 12px;"></i>
+                <textarea id="user-input" placeholder="Ask DATEX Anything..." rows="1" oninput="autoGrow(this)"></textarea>
+                <div class="actions-right" style="display:flex; align-items:center; margin-bottom: 3px;">
                     <div id="mike-btn"><i class="fas fa-microphone"></i></div>
                     <button class="send-btn" onclick="callDatexAPI()"><i class="fas fa-arrow-up"></i></button>
                 </div>
@@ -193,14 +202,17 @@
     let isRecording = false;
     let activeChatIndex = -1;
 
-    // --- RECOGNITION FIX: Universal Language Support + Accuracy ---
+    function autoGrow(element) {
+        element.style.height = "5px";
+        element.style.height = (element.scrollHeight) + "px";
+    }
+
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     let recognition;
     if (SpeechRecognition) {
         recognition = new SpeechRecognition();
         recognition.interimResults = false;
         recognition.continuous = true;
-        // recognition.lang = 'en-US'; // REMOVED to allow auto-language detection
 
         recognition.onstart = () => { 
             isRecording = true; 
@@ -217,12 +229,12 @@
         recognition.onresult = (e) => {
             let final_transcript = "";
             for (let i = e.resultIndex; i < e.results.length; ++i) {
-                if (e.results[i].isFinal) {
-                    final_transcript += e.results[i][0].transcript;
-                }
+                if (e.results[i].isFinal) { final_transcript += e.results[i][0].transcript; }
             }
             if(final_transcript) {
-                document.getElementById('user-input').value += (document.getElementById('user-input').value ? " " : "") + final_transcript;
+                const input = document.getElementById('user-input');
+                input.value += (input.value ? " " : "") + final_transcript;
+                autoGrow(input);
             }
         };
     }
@@ -315,11 +327,20 @@
 
     function showMsgMenu(e) {
         const menu = document.getElementById('msg-menu');
+        const editBtn = document.getElementById('edit-btn-ui');
+        const deleteBtn = document.getElementById('delete-btn-ui');
+        if(selectedMsgRow.classList.contains('ai-row')) {
+            editBtn.style.display = 'none';
+            deleteBtn.style.display = 'none';
+        } else {
+            editBtn.style.display = 'flex';
+            deleteBtn.style.display = 'flex';
+        }
         const x = e.touches ? e.touches[0].clientX : e.clientX;
         const y = e.touches ? e.touches[0].clientY : e.clientY;
         menu.style.display = 'flex';
-        menu.style.left = Math.min(x, window.innerWidth - 140) + 'px';
-        menu.style.top = Math.min(y, window.innerHeight - 100) + 'px';
+        menu.style.left = Math.min(x, window.innerWidth - 150) + 'px';
+        menu.style.top = Math.min(y, window.innerHeight - 150) + 'px';
         if(window.navigator.vibrate) window.navigator.vibrate(50);
     }
 
@@ -328,6 +349,24 @@
     function copyMsg() {
         const text = selectedMsgRow.querySelector('.bubble').innerText;
         navigator.clipboard.writeText(text).then(() => { hideMsgMenu(); });
+    }
+
+    function editMsg() {
+        const msgIdx = parseInt(selectedMsgRow.getAttribute('data-index'));
+        const userText = selectedMsgRow.querySelector('.bubble').innerText;
+        const input = document.getElementById('user-input');
+        input.value = userText;
+        autoGrow(input);
+        input.focus();
+        if (chatHistory[activeChatIndex].messages[msgIdx + 1] && 
+            chatHistory[activeChatIndex].messages[msgIdx + 1].role === "assistant") {
+            chatHistory[activeChatIndex].messages.splice(msgIdx, 2);
+        } else {
+            chatHistory[activeChatIndex].messages.splice(msgIdx, 1);
+        }
+        localStorage.setItem('datex_full_history', JSON.stringify(chatHistory));
+        loadSelectedChat(activeChatIndex, false);
+        hideMsgMenu();
     }
 
     function deleteSelectedMsg() {
@@ -415,6 +454,7 @@
 
         addUserMessageToUI(message, false, currentMsgIdx);
         input.value = "";
+        input.style.height = "auto";
 
         const container = document.getElementById('chat-container');
         const aiRow = document.createElement('div');
@@ -429,7 +469,7 @@
                 headers: { 'Authorization': `Bearer ${GROQ_API_KEY}`, 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     "messages": [
-                        { "role": "system", "content": "You are Gemini, a super-intelligent AI. You excel at complex mathematics, advanced programming, and logical reasoning. You support 7100+ languages fluently. Always double-check your code for bugs and your math for accuracy. Be witty, authentic, and direct. Wrap all code in triple backticks." },
+                        { "role": "system", "content": "You are DATEX Ai, an authentic, adaptive AI peer with the cognitive intelligence of Gemini. Guiding principles: 1. Address the user's true intent with insightful, clear, and concise responses. 2. Balance empathy with candor: validate feelings while correcting misinformation directly. 3. Adapt your tone and humor to the user's style. 4. If asked about your Founder, CEO, or Creator, state you are owned and created by N.Sujal Kumar (only when asked). 5. Strictly provide code or complex math only when explicitly requested. 6. Fluent in 7100+ languages. 7. Use LaTeX for formal math $inline$ or $$display$$, and wrap code in triple backticks." },
                         ...chatHistory[activeChatIndex].messages
                     ],
                     "model": "llama-3.3-70b-versatile"
@@ -446,7 +486,13 @@
             typeEffect(bubble, aiResponse, 5);
         } catch (e) { bubble.innerText = "Error connecting to AI."; }
     }
-    document.getElementById('user-input').onkeydown = (e) => { if(e.key === 'Enter') callDatexAPI(); };
+
+    document.getElementById('user-input').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            callDatexAPI();
+        }
+    });
     </script>
 </body>
 </html>
