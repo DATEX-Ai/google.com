@@ -12,8 +12,7 @@
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; -webkit-tap-highlight-color: transparent; }
         body { background-color: #ffffff; color: #333; height: 100vh; display: flex; overflow: hidden; width: 100%; position: fixed; }
         
-        /* Sidebar Styles */
-        .sidebar { position: fixed; top: 0; left: -280px; width: 280px; height: 100%; background: #f9f9f9; border-right: 1px solid #eee; transition: 0.3s; z-index: 1001; display: flex; flex-direction: column; }
+        .sidebar { position: fixed; top: 0; left: -280px; width: 280px; height: 100%; background: #f9f9f9; border-right: 1px solid #eee; transition: 0.3s; z-index: 2000; display: flex; flex-direction: column; }
         .sidebar.active { left: 0; }
         .sidebar-content { padding: 20px; flex: 1; overflow-y: auto; }
         .sidebar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
@@ -23,12 +22,11 @@
         .chat-item { flex: 1; padding: 12px; cursor: pointer; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border: none; background: transparent; text-align: left; }
         .delete-chat-btn { color: #999; cursor: pointer; font-size: 14px; padding: 10px; transition: 0.2s; }
         .delete-chat-btn:hover { color: #ff4d4d; }
-        
-        .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.1); display: none; z-index: 1000; }
+        .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.1); display: none; z-index: 1500; }
         .overlay.active { display: block; }
         
         .wrapper { flex: 1; display: flex; flex-direction: column; height: 100%; position: relative; width: 100%; overflow: hidden; }
-        header { display: flex; justify-content: space-between; align-items: center; padding: 12px 20px; border-bottom: 1px solid #f9f9f9; background: #fff; flex-shrink: 0; z-index: 100; }
+        header { display: flex; justify-content: space-between; align-items: center; padding: 12px 20px; border-bottom: 1px solid #f9f9f9; background: #fff; flex-shrink: 0; z-index: 500; }
         .menu-btn-container { width: 38px; height: 38px; border: 1.5px solid #333; border-radius: 50%; display: flex; flex-direction: column; justify-content: center; align-items: flex-start; padding-left: 9px; cursor: pointer; gap: 4px; }
         .menu-line { height: 2px; background: #333; border-radius: 2px; }
         .line-1 { width: 18px; } .line-2 { width: 13px; } .line-3 { width: 8px; }
@@ -37,8 +35,7 @@
         .version-pill { font-size: 10px; background: #f0f0f0; display: inline-block; padding: 2px 10px; border-radius: 12px; color: #777; border: 1px solid #ddd; }
         .logo-container img { width: 42px; height: 42px; border-radius: 50%; object-fit: cover; border: 1.5px solid #eee; }
         
-        /* FIX: Messages will flow OVER the wall now */
-        .main-content { flex: 1; display: flex; flex-direction: column; overflow-y: auto; padding: 10px 20px 110px 20px; width: 100%; max-width: 800px; margin: 0 auto; scrollbar-width: none; position: relative; z-index: 20; scroll-behavior: smooth; }
+        .main-content { flex: 1; display: flex; flex-direction: column; overflow-y: auto; padding: 10px 20px 100px 20px; width: 100%; max-width: 800px; margin: 0 auto; scrollbar-width: none; position: relative; z-index: 10; scroll-behavior: smooth; }
         
         .welcome-screen { display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100%; flex: 1; text-align: center; color: #222; font-size: 24px; font-weight: 500; }
         .welcome-screen span { display: block; font-size: 42px; letter-spacing: 4px; font-weight: 700; color: #000; margin-top: 5px; } 
@@ -50,22 +47,20 @@
         .ai-bubble { background-color: #fff; border: 1px solid #e5e7eb; border-bottom-left-radius: 4px; }
         .avatar { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; border: 1px solid #eee; flex-shrink: 0; }
         
-        /* SOLID WALL: Placed behind messages using z-index */
-        .bottom-container { position: fixed; bottom: 0; left: 0; width: 100%; background: #fff; border-top: 1.5px solid #f9f9f9; padding: 10px 0 25px 0; display: flex; justify-content: center; z-index: 10; box-shadow: none; }
-        .input-bar { width: 92%; max-width: 720px; background: #f3f4f6; border: 1.2px solid #e5e7eb; border-radius: 35px; display: flex; align-items: center; padding: 6px 10px 6px 18px; min-height: 52px; }
+        .bottom-container { position: fixed; bottom: 0; left: 0; width: 100%; background: #fff; border-top: 1.5px solid #f9f9f9; padding: 10px 0 25px 0; display: flex; justify-content: center; z-index: 1000; }
+        .input-bar { width: 92%; max-width: 720px; background: #f3f4f6; border: 1.2px solid #e5e7eb; border-radius: 35px; display: flex; align-items: center; padding: 6px 10px 6px 18px; min-height: 52px; pointer-events: auto; }
         .input-bar textarea { flex: 1; background: transparent; border: none; padding: 10px 0; font-size: 16px; outline: none; color: #1a1a1a; resize: none; max-height: 150px; overflow-y: auto; line-height: 1.4; }
         
-        .actions-right { display: flex; align-items: center; gap: 10px; align-self: center; }
-        #mike-btn, .send-btn { width: 40px; height: 40px; border-radius: 50%; display: flex; justify-content: center; align-items: center; cursor: pointer; border: none; flex-shrink: 0; }
+        .actions-right { display: flex; align-items: center; gap: 10px; }
+        #mike-btn, .send-btn { width: 40px; height: 40px; border-radius: 50%; display: flex; justify-content: center; align-items: center; cursor: pointer; border: none; }
         #mike-btn { font-size: 18px; color: #555; background: transparent; }
         .send-btn { background: #000; color: #fff; font-size: 16px; }
         #mike-btn.recording { background-color: #000 !important; color: #fff !important; }
         
         pre { background: #1e1e1e !important; color: #d4d4d4 !important; padding: 45px 15px 15px 15px; border-radius: 12px; margin: 15px 0; overflow-x: auto; position: relative; }
-        .code-copy-btn { position: absolute; top: 10px; right: 12px; background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.2); padding: 5px 10px; border-radius: 6px; font-size: 12px; cursor: pointer; z-index: 10; font-weight: 600; }
+        .code-copy-btn { position: absolute; top: 10px; right: 12px; background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.2); padding: 5px 10px; border-radius: 6px; font-size: 12px; cursor: pointer; z-index: 10; }
         .ai-bubble a { color: #0066cc !important; text-decoration: underline !important; font-weight: 600; }
-        
-        .msg-menu { position: fixed; background: #fff; border: 1px solid #ddd; border-radius: 12px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); display: none; z-index: 2000; flex-direction: column; width: 140px; }
+        .msg-menu { position: fixed; background: #fff; border: 1px solid #ddd; border-radius: 12px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); display: none; z-index: 3000; flex-direction: column; width: 140px; }
         .msg-menu button { padding: 12px; border: none; background: none; text-align: left; font-size: 14px; cursor: pointer; display: flex; align-items: center; gap: 10px; border-bottom: 0.5px solid #f0f0f0; }
         .new-chat-btn { width: 100%; padding: 14px; background: #000; color: #fff; border: none; border-radius: 12px; cursor: pointer; font-weight: 600; }
     </style>
@@ -105,8 +100,7 @@
     </div>
 
     <script>
-    // DATA KEY RECOVERY
-    const GROQ_API_KEY = "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"; 
+    const GROQ_API_KEY = "Gsk_WHv4fV20V4fVVescNCSqWGdyb3FYl75DN5KIAodgQHmv0F52jkJv"; 
     let chatHistory = JSON.parse(localStorage.getItem('datex_full_history')) || [];
     let isNewSession = true, selectedMsgRow = null, longPressTimer, isRecording = false, activeChatIndex = -1;
 
@@ -149,38 +143,10 @@
             list.innerHTML += `<div class="chat-item-wrapper"><div class="chat-item" onclick="loadSelectedChat(${actIdx}, true)">${chat.title}</div><i class="fas fa-trash-alt delete-chat-btn" onclick="deleteHistoryItem(event, ${actIdx})"></i></div>`;
         });
     }
-    
-    function deleteHistoryItem(e, idx) { 
-        e.stopPropagation(); 
-        chatHistory.splice(idx, 1); 
-        localStorage.setItem('datex_full_history', JSON.stringify(chatHistory)); 
-        renderChatList(); 
-        if(chatHistory.length === 0 || activeChatIndex === idx) createNewChat(); 
-    }
-
-    function loadSelectedChat(idx, toggle) { 
-        if(!chatHistory[idx]) return;
-        activeChatIndex = idx; 
-        isNewSession = false; 
-        document.getElementById('chat-container').innerHTML = ""; 
-        chatHistory[idx].messages.forEach((msg, mIdx) => { 
-            msg.role === "user" ? addUserMessageToUI(msg.content, mIdx) : addAiMessageToUI(msg.content, false, mIdx); 
-        }); 
-        if(toggle) toggleSidebar(); 
-    }
-
-    function createNewChat() { 
-        isNewSession = true; 
-        activeChatIndex = -1; 
-        document.getElementById('chat-container').innerHTML = `<div class="welcome-screen" id="welcome-screen">Welcome To<br><span>DATEX Ai</span></div>`; 
-        if(document.getElementById('sidebar').classList.contains('active')) toggleSidebar(); 
-    }
-
-    function toggleSidebar() { 
-        document.getElementById('sidebar').classList.toggle('active'); 
-        document.getElementById('overlay').classList.toggle('active'); 
-    }
-
+    function deleteHistoryItem(e, idx) { e.stopPropagation(); chatHistory.splice(idx, 1); localStorage.setItem('datex_full_history', JSON.stringify(chatHistory)); renderChatList(); if(chatHistory.length === 0 || activeChatIndex === idx) createNewChat(); }
+    function loadSelectedChat(idx, toggle) { if(!chatHistory[idx]) return; activeChatIndex = idx; isNewSession = false; document.getElementById('chat-container').innerHTML = ""; chatHistory[idx].messages.forEach((msg, mIdx) => { msg.role === "user" ? addUserMessageToUI(msg.content, mIdx) : addAiMessageToUI(msg.content, false, mIdx); }); if(toggle) toggleSidebar(); }
+    function createNewChat() { isNewSession = true; activeChatIndex = -1; document.getElementById('chat-container').innerHTML = `<div class="welcome-screen" id="welcome-screen">Welcome To<br><span>DATEX Ai</span></div>`; if(document.getElementById('sidebar').classList.contains('active')) toggleSidebar(); }
+    function toggleSidebar() { document.getElementById('sidebar').classList.toggle('active'); document.getElementById('overlay').classList.toggle('active'); }
     function addUserMessageToUI(text, idx) { 
         const cont = document.getElementById('chat-container'); 
         if(document.getElementById('welcome-screen')) document.getElementById('welcome-screen').remove(); 
@@ -188,7 +154,6 @@
         row.innerHTML = `<div class="bubble-container"><div class="bubble user-bubble">${text}</div></div>`;
         attachMsgEvents(row); cont.appendChild(row); cont.scrollTop = cont.scrollHeight; 
     }
-
     function addAiMessageToUI(text, isNew, idx) { 
         const cont = document.getElementById('chat-container'); 
         const row = document.createElement('div'); row.className = 'message-row ai-row'; row.setAttribute('data-index', idx);
@@ -197,7 +162,6 @@
         if(isNew) { typeEffect(bubble, text); } else { bubble.innerHTML = processMarkdown(text); }
         cont.scrollTop = cont.scrollHeight; 
     }
-
     function processMarkdown(text) {
         let html = marked.parse(text);
         const tempDiv = document.createElement('div');
@@ -211,13 +175,11 @@
         });
         return tempDiv.innerHTML;
     }
-
     function attachMsgEvents(row) { 
         row.addEventListener('touchstart', (e) => { selectedMsgRow = row; longPressTimer = setTimeout(() => showMsgMenu(e), 600); }, {passive:true}); 
         row.addEventListener('touchend', () => clearTimeout(longPressTimer)); 
         row.addEventListener('contextmenu', (e) => { e.preventDefault(); selectedMsgRow = row; showMsgMenu(e); }); 
     }
-
     function showMsgMenu(e) { 
         const menu = document.getElementById('msg-menu'); 
         const isAi = selectedMsgRow.classList.contains('ai-row');
@@ -226,26 +188,10 @@
         const x = e.touches ? e.touches[0].clientX : e.clientX, y = e.touches ? e.touches[0].clientY : e.clientY; 
         menu.style.display = 'flex'; menu.style.left = Math.min(x, window.innerWidth-150)+'px'; menu.style.top = Math.min(y, window.innerHeight-150)+'px'; 
     }
-
     function hideMsgMenu() { document.getElementById('msg-menu').style.display = 'none'; }
     function copyMsg() { navigator.clipboard.writeText(selectedMsgRow.querySelector('.bubble').innerText).then(hideMsgMenu); }
-    function deleteSelectedMsg() { 
-        if(selectedMsgRow && activeChatIndex !== -1) { 
-            chatHistory[activeChatIndex].messages.splice(parseInt(selectedMsgRow.getAttribute('data-index')), 2); 
-            localStorage.setItem('datex_full_history', JSON.stringify(chatHistory)); 
-            loadSelectedChat(activeChatIndex, false); 
-        } 
-        hideMsgMenu(); 
-    }
-
-    function editMsg() { 
-        const idx = parseInt(selectedMsgRow.getAttribute('data-index')), userText = selectedMsgRow.querySelector('.bubble').innerText, input = document.getElementById('user-input'); 
-        input.value = userText; autoGrow(input); input.focus(); 
-        chatHistory[activeChatIndex].messages.splice(idx, 2); 
-        localStorage.setItem('datex_full_history', JSON.stringify(chatHistory)); 
-        loadSelectedChat(activeChatIndex, false); hideMsgMenu(); 
-    }
-
+    function deleteSelectedMsg() { if(selectedMsgRow && activeChatIndex !== -1) { chatHistory[activeChatIndex].messages.splice(parseInt(selectedMsgRow.getAttribute('data-index')), 2); localStorage.setItem('datex_full_history', JSON.stringify(chatHistory)); loadSelectedChat(activeChatIndex, false); } hideMsgMenu(); }
+    function editMsg() { const idx = parseInt(selectedMsgRow.getAttribute('data-index')), userText = selectedMsgRow.querySelector('.bubble').innerText, input = document.getElementById('user-input'); input.value = userText; autoGrow(input); input.focus(); chatHistory[activeChatIndex].messages.splice(idx, 2); localStorage.setItem('datex_full_history', JSON.stringify(chatHistory)); loadSelectedChat(activeChatIndex, false); hideMsgMenu(); }
     function typeEffect(el, text) {
         let i = 0;
         function typing() {
@@ -258,26 +204,17 @@
         }
         typing();
     }
-
     async function callDatexAPI() {
         if (isRecording) recognition.stop();
         const input = document.getElementById('user-input'), msg = input.value.trim();
         if (!msg) return;
-        
-        if (isNewSession) { 
-            chatHistory.push({ title: msg.substring(0,30), messages: [] }); 
-            activeChatIndex = chatHistory.length - 1; 
-            isNewSession = false; 
-        }
-        
+        if (isNewSession) { chatHistory.push({ title: msg.substring(0,30), messages: [] }); activeChatIndex = chatHistory.length - 1; isNewSession = false; }
         chatHistory[activeChatIndex].messages.push({ role: "user", content: msg });
         addUserMessageToUI(msg, chatHistory[activeChatIndex].messages.length-1);
         input.value = ""; input.style.height = "auto";
-        
         const aiRow = document.createElement('div'); aiRow.className = 'message-row ai-row';
         aiRow.innerHTML = `<img src="logo.jpg.jpg" class="avatar"><div class="bubble-container"><div class="bubble ai-bubble">Thinking...</div></div>`;
         document.getElementById('chat-container').appendChild(aiRow); const bubble = aiRow.querySelector('.ai-bubble');
-        
         try {
             const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
                 method: 'POST', headers: { 'Authorization': `Bearer ${GROQ_API_KEY}`, 'Content-Type': 'application/json' },
@@ -289,10 +226,8 @@
             const data = await res.json(), aiRes = data.choices[0].message.content;
             chatHistory[activeChatIndex].messages.push({ role: "assistant", content: aiRes });
             aiRow.setAttribute('data-index', chatHistory[activeChatIndex].messages.length-1);
-            attachMsgEvents(aiRow); 
-            localStorage.setItem('datex_full_history', JSON.stringify(chatHistory));
-            renderChatList(); 
-            bubble.innerHTML = ""; typeEffect(bubble, aiRes);
+            attachMsgEvents(aiRow); localStorage.setItem('datex_full_history', JSON.stringify(chatHistory));
+            renderChatList(); bubble.innerHTML = ""; typeEffect(bubble, aiRes);
         } catch (e) { bubble.innerText = "Error connecting."; }
     }
     document.getElementById('user-input').addEventListener('keydown', (e) => { if(e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); callDatexAPI(); } });
