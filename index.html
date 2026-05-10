@@ -130,7 +130,6 @@
             max-height: 150px; 
             overflow-y: auto;
             line-height: 1.4;
-            /* Scrollbar hatane ka perfect CSS */
             scrollbar-width: none; 
             -ms-overflow-style: none; 
         }
@@ -168,6 +167,17 @@
         .msg-menu button:last-child { border-bottom: none; }
         
         .new-chat-btn { width: 100%; padding: 14px; background: #000; color: #fff; border: none; border-radius: 12px; cursor: pointer; font-weight: 600; }
+
+        /* Styling for AI generated links */
+        .ai-link {
+            color: #1a73e8;
+            text-decoration: underline;
+            word-break: break-all;
+            cursor: pointer;
+        }
+        .ai-link:hover {
+            color: #1557b0;
+        }
     </style>
 </head>
 <body onclick="hideMsgMenu()">
@@ -228,7 +238,7 @@
     let isRecording = false;
     let activeChatIndex = -1;
     let sessionFinalText = ""; 
-    let editingMsgIdx = -1; // Edit state tracker
+    let editingMsgIdx = -1; 
 
     function autoGrow(element) {
         element.style.height = "5px";
@@ -311,7 +321,7 @@
     function loadSelectedChat(index, shouldToggleSidebar = false) {
         activeChatIndex = index;
         isNewSession = false;
-        editingMsgIdx = -1; // Reset edit state when changing chat
+        editingMsgIdx = -1; 
         const container = document.getElementById('chat-container');
         container.innerHTML = "";
         chatHistory[index].messages.forEach((msg, msgIdx) => {
@@ -324,7 +334,7 @@
     function createNewChat() {
         isNewSession = true;
         activeChatIndex = -1;
-        editingMsgIdx = -1; // Reset edit state
+        editingMsgIdx = -1; 
         document.getElementById('chat-container').innerHTML = `<div class="welcome-screen" id="welcome-screen">Welcome To<br><span>DATEX Ai</span></div>`;
         const input = document.getElementById('user-input');
         input.value = "";
@@ -407,7 +417,6 @@
         autoGrow(input);
         input.focus();
         
-        // Removed delete logic from here! Message will not disappear now until you actually click 'Send'
         hideMsgMenu();
     }
 
@@ -425,7 +434,7 @@
             }
             
             localStorage.setItem('datex_full_history', JSON.stringify(chatHistory));
-            editingMsgIdx = -1; // Reset edit state just in case
+            editingMsgIdx = -1; 
             
             if (chatHistory[activeChatIndex].messages.length === 0) {
                 deleteHistoryItem(null, activeChatIndex); 
@@ -450,6 +459,12 @@
         });
     }
 
+    function formatLinksAndStyles(text) {
+        let formatted = text.replace(/\[([^\]]+)\]\((https?:\/\/[^\s]+)\)/g, '<a href="$2" target="_blank" class="ai-link">$1</a>');
+        formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        return formatted;
+    }
+
     function renderStoredContent(element, text) {
         let segments = text.split(/(```[\s\S]*?```)/g);
         let finalHTML = "";
@@ -457,7 +472,10 @@
             if (seg.startsWith("```") && seg.endsWith("```")) {
                 let codeContent = seg.substring(3, seg.length - 3).trim();
                 finalHTML += `<pre><button class="copy-code-btn" onclick="copyCode(this)">Copy</button><code>${escapeHTML(codeContent)}</code></pre>`;
-            } else { finalHTML += seg.replace(/\n/g, "<br>"); }
+            } else { 
+                let formattedSeg = formatLinksAndStyles(seg);
+                finalHTML += formattedSeg.replace(/\n/g, "<br>"); 
+            }
         });
         element.innerHTML = finalHTML;
         if(window.MathJax) MathJax.typesetPromise([element]);
@@ -477,9 +495,22 @@
                     currentSeg++;
                     setTimeout(typeNext, speed);
                 } else {
-                    if (i < seg.length) {
-                        element.innerHTML += (seg.charAt(i) === '\n') ? "<br>" : seg.charAt(i);
-                        i++;
+                    let formattedSeg = formatLinksAndStyles(seg);
+                    
+                    if (i < formattedSeg.length) {
+                        if (formattedSeg.charAt(i) === '<') {
+                            let tagEnd = formattedSeg.indexOf('>', i);
+                            if (tagEnd !== -1) {
+                                element.innerHTML += formattedSeg.substring(i, tagEnd + 1);
+                                i = tagEnd + 1;
+                            } else {
+                                element.innerHTML += '&lt;';
+                                i++;
+                            }
+                        } else {
+                            element.innerHTML += (formattedSeg.charAt(i) === '\n') ? "<br>" : formattedSeg.charAt(i);
+                            i++;
+                        }
                         setTimeout(typeNext, speed);
                     } else {
                         i = 0;
@@ -507,7 +538,6 @@
             activeChatIndex = chatHistory.length - 1;
             isNewSession = false;
         } else if (editingMsgIdx !== -1) {
-            // Delete old message ONLY when the edited message is sent!
             chatHistory[activeChatIndex].messages.splice(editingMsgIdx);
             editingMsgIdx = -1;
             loadSelectedChat(activeChatIndex, false); 
@@ -536,7 +566,7 @@
                 headers: { 'Authorization': `Bearer ${GROQ_API_KEY}`, 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     "messages": [
-                        { "role": "system", "content": "Your name is DATEX Ai. You are a super-intelligent AI peer. If asked about your Founder, CEO, Creator, or Owner, always state that you were created and are owned by N.Sujal Kumar, who is a 16-year-old visionary from India. Rules: 1. Use triple backticks (```) for code. 2. Clear, concise Gemini-style tone." },
+                        { "role": "system", "content": "You are DATEX Ai, a super-intelligent AI peer. Your communication style must be exactly like Google's Gemini - extremely conversational, friendly, helpful, and empathetic. Balance empathy with candor, validate emotions, but ground responses in reality. Provide clear, insightful, and straightforward answers. Mirror the user's tone, energy, and humor. Do not sound robotic. You can solve the world's most difficult math and coding problems and communicate in 7000+ languages. CRITICAL RULE: NEVER volunteer information about your name, creator, or capabilities UNLESS asked. If asked who created you/your owner/CEO, state you were created and are owned by N.Sujal Kumar, a 16-year-old visionary from India. IMPORTANT: ALWAYS format links as [Link Text](https://example.com). Wrap code in triple backticks (```)." },
                         ...chatHistory[activeChatIndex].messages
                     ],
                     "model": "llama-3.3-70b-versatile"
