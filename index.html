@@ -60,7 +60,7 @@
         .logo-container img { width: 42px; height: 42px; border-radius: 50%; object-fit: cover; border: 1.5px solid #eee; }
 
         /* --- Chat Screen --- */
-        .main-content { flex: 1; display: flex; flex-direction: column; overflow-y: auto; padding: 10px 20px 100px 20px; width: 100%; max-width: 800px; margin: 0 auto; scrollbar-width: none; }
+        .main-content { flex: 1; display: flex; flex-direction: column; overflow-y: auto; padding: 10px 20px 120px 20px; width: 100%; max-width: 800px; margin: 0 auto; scrollbar-width: none; }
         .welcome-screen { text-align: center; margin-top: 15vh; color: #222; font-size: 24px; font-weight: 500; line-height: 1.0; }
         .welcome-screen span { display: block; font-size: 42px; letter-spacing: 4px; font-weight: 700; color: #000; margin-top: 25px; } 
 
@@ -72,14 +72,14 @@
         .ai-bubble { background-color: #fff; border: 1px solid #e5e7eb; border-bottom-left-radius: 4px; }
         .avatar { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; border: 1px solid #eee; flex-shrink: 0; }
 
-        /* --- Compact & Centered Input Bar --- */
+        /* --- Gemini-Style Floating Pill Input Bar --- */
         .bottom-container { 
             position: absolute;
-            bottom: 0;
+            bottom: 20px; /* Floating look */
             left: 0;
             right: 0;
-            padding: 10px 15px 25px 15px; /* Added padding to keep it away from bottom edge */
-            background: #fff; 
+            padding: 0 16px; 
+            background: transparent; /* Makes it look like it's floating on the chat */
             display: flex; 
             justify-content: center; 
             width: 100%; 
@@ -87,30 +87,33 @@
         }
         .input-bar { 
             flex: 1; 
-            max-width: 700px; /* Thoda chota kiya side se */
+            max-width: 700px; 
             background: #f3f4f6; 
             border: 1px solid #e5e7eb; 
-            border-radius: 30px; /* Smooth corners */
+            border-radius: 40px; /* Full pill shape */
             display: flex; 
             align-items: center; 
-            padding: 2px 8px 2px 15px; /* Thoda compact kiya */
+            padding: 6px 10px 6px 20px; /* Thoda mota aur lamba type padding */
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05); /* Soft shadow like Gemini */
         }
         .input-bar input { 
             flex: 1; 
             background: transparent; 
             border: none; 
-            padding: 10px; 
-            font-size: 15px; /* Standard mobile font size to prevent zoom */
+            padding: 10px 0; 
+            font-size: 16px; 
             outline: none; 
             min-width: 0; 
+            color: #1a1a1a;
         }
         
-        #mike-btn, .send-btn { width: 36px; height: 36px; border-radius: 50%; display: flex; justify-content: center; align-items: center; cursor: pointer; border: none; flex-shrink: 0; }
-        #mike-btn { font-size: 16px; color: #555; background: transparent; }
-        .send-btn { background: #000; color: #fff; margin-left: 5px; font-size: 14px; }
+        #mike-btn, .send-btn { width: 40px; height: 40px; border-radius: 50%; display: flex; justify-content: center; align-items: center; cursor: pointer; border: none; flex-shrink: 0; }
+        #mike-btn { font-size: 18px; color: #555; background: transparent; transition: 0.2s; }
+        .send-btn { background: #000; color: #fff; margin-left: 8px; transition: 0.2s; }
+        .send-btn:active { transform: scale(0.9); }
         #mike-btn.recording { background-color: #000 !important; color: #fff !important; }
 
-        /* --- Stored styles --- */
+        /* --- Utility styles --- */
         pre { background: #1e1e1e; color: #d4d4d4; padding: 45px 15px 15px 15px; border-radius: 12px; margin: 15px 0; overflow-x: auto; position: relative; font-family: 'Consolas', monospace; font-size: 14px; width: 100%; border: 1px solid #333; }
         code { font-family: 'Consolas', monospace; white-space: pre-wrap; }
         .copy-code-btn { position: absolute; top: 10px; right: 12px; background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.2); padding: 5px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; z-index: 10; }
@@ -155,7 +158,7 @@
 
         <div class="bottom-container">
             <div class="input-bar">
-                <i class="fas fa-plus" style="color:#777; cursor:pointer; font-size: 14px;"></i>
+                <i class="fas fa-plus" style="color:#777; cursor:pointer; font-size: 16px; margin-right: 10px;"></i>
                 <input type="text" id="user-input" placeholder="Ask DATEX Anything..." autocomplete="off">
                 <div class="actions-right" style="display:flex; align-items:center;">
                     <div id="mike-btn"><i class="fas fa-microphone"></i></div>
