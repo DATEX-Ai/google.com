@@ -216,6 +216,20 @@
         .ai-link:hover {
             color: #1557b0 !important;
         }
+
+        .action-btn { 
+            background: transparent; 
+            border: none; 
+            color: #888; 
+            cursor: pointer; 
+            font-size: 15px; 
+            margin-top: 8px; 
+            margin-left: 10px; 
+            display: flex; 
+            align-items: center; 
+            transition: 0.2s; 
+        }
+        .action-btn:hover { color: #333; }
     </style>
 </head>
 <body onclick="hideMsgMenu()">
@@ -260,7 +274,7 @@
                     <textarea id="user-input" placeholder="Ask DATEX AI..." rows="1" oninput="autoGrow(this)"></textarea>
                     <div class="actions-right" style="display:flex; align-items:center; margin-bottom: 3px;">
                         <div id="mike-btn"><i class="fas fa-microphone"></i></div>
-                        <button class="send-btn" onclick="callDatexAPI()"><i class="fas fa-arrow-up"></i></button>
+                        <button class="send-btn" onclick="handleSendClick()"><i class="fas fa-arrow-up"></i></button>
                     </div>
                 </div>
             </div>
@@ -286,6 +300,11 @@
     let activeChatIndex = -1;
     let sessionFinalText = ""; 
     let editingMsgIdx = -1; 
+    
+    let isGenerating = false;
+    let stopGenerationFlag = false;
+    let abortController = null;
+    let currentAiRow = null;
 
     function autoGrow(element) {
         element.style.height = "5px";
@@ -307,7 +326,8 @@
             }
             const btn = document.getElementById('mike-btn');
             btn.classList.add('recording'); 
-            btn.innerHTML = '<div class="stop-square"></div>';
+            // Yahan se stop-square hata diya hai, ab sirf mic icon hi rahega aur black circle ban jayega
+            btn.innerHTML = '<i class="fas fa-microphone"></i>'; 
         };
         recognition.onend = () => { 
             isRecording = false; 
@@ -560,6 +580,17 @@
         let currentSeg = 0;
 
         function typeNext() {
+            if (stopGenerationFlag) {
+                const aiMsgIdx = parseInt(currentAiRow.getAttribute('data-index'));
+                if(!isNaN(aiMsgIdx) && chatHistory[activeChatIndex].messages[aiMsgIdx]) {
+                    chatHistory[activeChatIndex].messages[aiMsgIdx].content = element.innerHTML;
+                    localStorage.setItem('datex_full_history', JSON.stringify(chatHistory));
+                }
+                resetSendButton();
+                addRegenerateButton(currentAiRow);
+                return;
+            }
+
             if (currentSeg < segments.length) {
                 let seg = segments[currentSeg];
                 if (seg.startsWith("```") && seg.endsWith("```")) {
@@ -592,14 +623,67 @@
                     }
                 }
                 document.getElementById('chat-container').scrollTop = document.getElementById('chat-container').scrollHeight;
-            } else if(window.MathJax) { 
-                MathJax.typesetPromise([element]); 
+            } else {
+                resetSendButton();
+                if(window.MathJax) { 
+                    MathJax.typesetPromise([element]).catch((err) => console.log(err)); 
+                }
             }
         }
         typeNext();
     }
 
-    async function callDatexAPI() {
+    function handleSendClick() {
+        if (isGenerating) {
+            stopGeneration();
+        } else {
+            callDatexAPI();
+        }
+    }
+
+    function stopGeneration() {
+        stopGenerationFlag = true;
+        if (abortController) {
+            abortController.abort();
+        }
+        resetSendButton();
+        if (currentAiRow) {
+            addRegenerateButton(currentAiRow);
+        }
+    }
+
+    function resetSendButton() {
+        isGenerating = false;
+        const sendBtn = document.querySelector('.send-btn');
+        if(sendBtn) {
+            sendBtn.innerHTML = '<i class="fas fa-arrow-up"></i>';
+        }
+    }
+
+    function addRegenerateButton(row) {
+        if (!row) return;
+        const container = row.querySelector('.bubble-container');
+        if (container && !container.querySelector('.action-btn')) {
+            const btnHtml = `<button class="action-btn" onclick="regenerateMessage(this)"><i class="fas fa-redo"></i></button>`;
+            container.insertAdjacentHTML('beforeend', btnHtml);
+        }
+    }
+
+    function regenerateMessage(btn) {
+        const row = btn.closest('.ai-row');
+        const indexAttr = row.getAttribute('data-index');
+        if (indexAttr) {
+            const msgIdx = parseInt(indexAttr);
+            if (chatHistory[activeChatIndex].messages[msgIdx]) {
+                chatHistory[activeChatIndex].messages.splice(msgIdx, 1);
+                localStorage.setItem('datex_full_history', JSON.stringify(chatHistory));
+            }
+        }
+        row.remove();
+        callDatexAPI(true);
+    }
+
+    async function callDatexAPI(isRegenerate = false) {
         try {
             if (isRecording && recognition) {
                 recognition.stop();
@@ -611,32 +695,40 @@
         btn.classList.remove('recording');
         btn.innerHTML = '<i class="fas fa-microphone"></i>';
 
-        const input = document.getElementById('user-input');
-        const message = input.value.trim();
-        if (!message) return;
+        let message = "";
         
-        sessionFinalText = "";
+        if (!isRegenerate) {
+            const input = document.getElementById('user-input');
+            message = input.value.trim();
+            if (!message) return;
+            
+            sessionFinalText = "";
+            input.value = "";
+            input.style.height = "auto";
 
-        if (isNewSession) {
-            const newChat = { title: message.substring(0, 30), messages: [] };
-            chatHistory.push(newChat);
-            activeChatIndex = chatHistory.length - 1;
-            isNewSession = false;
-        } else if (editingMsgIdx !== -1) {
-            chatHistory[activeChatIndex].messages.splice(editingMsgIdx);
-            editingMsgIdx = -1;
-            loadSelectedChat(activeChatIndex, false); 
+            if (isNewSession) {
+                const newChat = { title: message.substring(0, 30), messages: [] };
+                chatHistory.push(newChat);
+                activeChatIndex = chatHistory.length - 1;
+                isNewSession = false;
+            } else if (editingMsgIdx !== -1) {
+                chatHistory[activeChatIndex].messages.splice(editingMsgIdx);
+                editingMsgIdx = -1;
+                loadSelectedChat(activeChatIndex, false); 
+            }
+            
+            const currentMsgIdx = chatHistory[activeChatIndex].messages.length;
+            chatHistory[activeChatIndex].messages.push({ role: "user", content: message });
+            localStorage.setItem('datex_full_history', JSON.stringify(chatHistory));
+            
+            renderChatList();
+            addUserMessageToUI(message, false, currentMsgIdx);
         }
-        
-        const currentMsgIdx = chatHistory[activeChatIndex].messages.length;
-        chatHistory[activeChatIndex].messages.push({ role: "user", content: message });
-        localStorage.setItem('datex_full_history', JSON.stringify(chatHistory));
-        
-        renderChatList();
 
-        addUserMessageToUI(message, false, currentMsgIdx);
-        input.value = "";
-        input.style.height = "auto";
+        isGenerating = true;
+        stopGenerationFlag = false;
+        const sendBtn = document.querySelector('.send-btn');
+        sendBtn.innerHTML = '<div class="stop-square"></div>';
 
         const container = document.getElementById('chat-container');
         const aiRow = document.createElement('div');
@@ -644,6 +736,7 @@
         aiRow.innerHTML = `<img src="logo.jpg.jpg" class="avatar"><div class="bubble-container"><div class="bubble ai-bubble">Thinking...</div></div>`;
         container.appendChild(aiRow);
         const bubble = aiRow.querySelector('.ai-bubble');
+        currentAiRow = aiRow;
 
         const now = new Date();
         const dateStr = now.toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
@@ -651,20 +744,24 @@
 
         const systemPromptString = `You are DATEX AI. Your name is strictly 'DATEX AI'. You must never identify as Llama, Meta, or OpenAI. 
 
-CURRENT REAL-TIME DATA: Today is ${dateStr} and the current time is ${timeStr}. You have access to a full calendar. Use this to identify today's date, day, and mention any festivals or special events associated with this date using your internal knowledge.
+CURRENT REAL-TIME DATA: Today is ${dateStr} and the current time is ${timeStr}.
 
 CRITICAL INSTRUCTIONS:
-1. ADVANCED MATHEMATICS & CALCULATOR: You act as a high-performance computational engine. You can solve world-class difficult math problems. ALWAYS think step-by-step internally and verify your work to ensure 100% correct answers.
-2. WORLD KNOWLEDGE: You have complete access to general knowledge about history, current events, and science. You function like a real-time information browser.
-3. PERSONALITY: Your communication style is exactly like Google's Gemini - conversational, empathetic, friendly, and highly intelligent.
-4. IDENTITY: If asked who created you, your owner, CEO, founder, or co-founder, state you were created and are owned by N.Sujal Kumar, a 16-year-old visionary from India.
-5. CODING RULE: ONLY provide programming code (Python, Java, etc.) if the user explicitly asks for code in a specific language. Otherwise, communicate in natural language.
-6. LINKS: Provide valid, official links for videos or information when relevant based on your knowledge base.`;
+1. BE NORMAL & NATURAL: Just talk normally like a human friend. DO NOT introduce yourself, DO NOT list your capabilities, and DO NOT mention your creator UNLESS the user explicitly asks. Directly answer the user's question.
+2. ADVANCED MATHEMATICS: Solve math problems perfectly step-by-step.
+3. WORLD KNOWLEDGE: Provide accurate facts, history, and real-time info when asked.
+4. PERSONALITY: Be exactly like Google's Gemini - conversational, empathetic, friendly, and highly intelligent.
+5. IDENTITY: ONLY IF directly asked "who created you" or "who is your owner", state you were created and are owned by N.Sujal Kumar, a 16-year-old visionary from India.
+6. CODING RULE: Only provide programming code if explicitly asked.
+7. LINKS: Provide valid, official links when relevant.`;
+
+        abortController = new AbortController();
 
         try {
             const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${GROQ_API_KEY}`, 'Content-Type': 'application/json' },
+                signal: abortController.signal,
                 body: JSON.stringify({
                     "messages": [
                         { "role": "system", "content": systemPromptString },
@@ -682,7 +779,16 @@ CRITICAL INSTRUCTIONS:
             localStorage.setItem('datex_full_history', JSON.stringify(chatHistory));
             bubble.innerHTML = "";
             typeEffect(bubble, aiResponse, 5);
-        } catch (e) { bubble.innerText = "Error connecting to AI. Please check your internet connection."; }
+        } catch (e) { 
+            if (e.name === 'AbortError') {
+                bubble.innerText = "Generation stopped.";
+                resetSendButton();
+                addRegenerateButton(currentAiRow);
+            } else {
+                bubble.innerText = "Error connecting to AI. Please check your internet connection."; 
+                resetSendButton();
+            }
+        }
     }
 
     document.getElementById('user-input').addEventListener('keydown', (e) => {
@@ -691,7 +797,7 @@ CRITICAL INSTRUCTIONS:
                 return; 
             }
             e.preventDefault();
-            callDatexAPI();
+            handleSendClick(); 
         }
     });
     </script>
