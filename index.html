@@ -29,7 +29,6 @@
             position: fixed; 
             top: 0;
             left: 0;
-            /* COMPLETELY DISABLED BLUE HIGHLIGHT & LONG PRESS EVERYWHERE */
             -webkit-touch-callout: none; 
             -webkit-user-select: none; 
             -moz-user-select: none; 
@@ -37,8 +36,14 @@
             user-select: none; 
         }
 
+        .bubble, pre, code {
+            -webkit-user-select: text;
+            -moz-user-select: text;
+            -ms-user-select: text;
+            user-select: text;
+        }
+
         textarea, input {
-            /* ONLY INPUT AREA IS SELECTABLE */
             -webkit-user-select: auto;
             -moz-user-select: auto;
             -ms-user-select: auto;
@@ -228,17 +233,113 @@
         .ai-action-bar { justify-content: flex-start; }
         .action-btn { background: transparent; border: none; color: #aaa; cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; transition: 0.2s; padding: 5px; }
         .action-btn:hover { color: #333; }
+
+        /* --- NEW: BOTTOM SHEET ATTACHMENT MENU CSS --- */
+        .attachment-menu {
+            position: fixed;
+            bottom: -300px; /* Hidden below screen */
+            left: 0;
+            width: 100%;
+            background: #fff;
+            border-top-left-radius: 20px;
+            border-top-right-radius: 20px;
+            box-shadow: 0 -5px 25px rgba(0,0,0,0.15);
+            display: flex;
+            justify-content: space-around;
+            padding: 30px 20px 40px 20px;
+            transition: bottom 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            z-index: 2000;
+        }
+        .attachment-menu.active {
+            bottom: 0;
+        }
+        /* Top pull handle visual */
+        .attachment-menu::before {
+            content: '';
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 40px;
+            height: 4px;
+            background: #ddd;
+            border-radius: 4px;
+        }
+        .attachment-option {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+        }
+        .attachment-option .icon-box {
+            width: 60px;
+            height: 60px;
+            border: 1px solid #eee;
+            border-radius: 16px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 24px;
+            color: #444;
+            background: #fdfdfd;
+            transition: 0.2s;
+        }
+        .attachment-option:active .icon-box {
+            background: #eee;
+            transform: scale(0.95);
+        }
+        .attachment-option span {
+            font-size: 13px;
+            color: #333;
+            font-weight: 500;
+        }
+        .attachment-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.3);
+            display: none;
+            z-index: 1999;
+        }
+        .attachment-overlay.active {
+            display: block;
+        }
+        /* Hidden file inputs */
+        .hidden-input {
+            display: none;
+        }
     </style>
 </head>
 <body onclick="hideMsgMenu()">
 
     <div class="overlay" id="overlay" onclick="toggleSidebar()"></div>
     
+    <div class="attachment-overlay" id="attachment-overlay" onclick="toggleAttachmentMenu()"></div>
+
     <div id="msg-menu" class="msg-menu">
         <button id="copy-btn-ui" onclick="copyMsg()"><i class="fas fa-copy"></i> Copy</button>
         <button id="edit-btn-ui" onclick="editMsg()"><i class="fas fa-pen"></i> Edit</button>
         <button id="delete-btn-ui" onclick="deleteSelectedMsg()" style="color:red;"><i class="fas fa-trash"></i> Delete</button>
     </div>
+
+    <div class="attachment-menu" id="attachment-menu">
+        <div class="attachment-option" onclick="triggerCamera()">
+            <div class="icon-box"><i class="fas fa-camera"></i></div>
+            <span>Camera</span>
+        </div>
+        <div class="attachment-option" onclick="triggerGallery()">
+            <div class="icon-box"><i class="fas fa-image"></i></div>
+            <span>Photos</span>
+        </div>
+        <div class="attachment-option" onclick="triggerFiles()">
+            <div class="icon-box"><i class="fas fa-file-alt"></i></div>
+            <span>Files</span>
+        </div>
+    </div>
+
+    <input type="file" id="camera-input" class="hidden-input" accept="image/*" capture onchange="handleFileSelect(event)">
+    <input type="file" id="gallery-input" class="hidden-input" accept="image/*" onchange="handleFileSelect(event)">
+    <input type="file" id="file-input" class="hidden-input" accept=".pdf,.doc,.docx,.txt" onchange="handleFileSelect(event)">
 
     <div class="sidebar" id="sidebar">
         <div class="sidebar-content">
@@ -269,7 +370,7 @@
             <div class="input-bar-wrapper">
                 <div class="input-bar">
                     <div style="height: 44px; display: flex; align-items: center; margin-right: 12px;">
-                        <i class="fas fa-plus" style="color:#777; cursor:pointer; font-size: 18px;"></i>
+                        <i class="fas fa-plus" onclick="toggleAttachmentMenu(event)" style="color:#777; cursor:pointer; font-size: 18px;"></i>
                     </div>
                     <textarea id="user-input" placeholder="Ask DATEX AI..." rows="1" oninput="autoGrow(this)"></textarea>
                     <div class="actions-right" style="display:flex; align-items:center; height: 44px;">
@@ -282,7 +383,6 @@
     </div>
 
     <script>
-    // PREVENT NATIVE LONG PRESS MENU EVERYWHERE EXCEPT TEXT AREA
     document.addEventListener('contextmenu', function(e) {
         if (e.target.tagName !== 'TEXTAREA' && e.target.tagName !== 'INPUT') {
             e.preventDefault();
@@ -314,13 +414,54 @@
     let abortController = null;
     let currentAiRow = null;
 
-    // SCROLL TO HIDE MENU FIX
     document.getElementById('chat-container').addEventListener('scroll', () => {
         if(document.getElementById('msg-menu').style.display === 'flex') {
             hideMsgMenu();
         }
     });
     window.addEventListener('scroll', hideMsgMenu);
+
+    // --- NEW: ATTACHMENT MENU LOGIC ---
+    function toggleAttachmentMenu(e) {
+        if(e) e.stopPropagation();
+        const menu = document.getElementById('attachment-menu');
+        const overlay = document.getElementById('attachment-overlay');
+        if (menu.classList.contains('active')) {
+            menu.classList.remove('active');
+            overlay.classList.remove('active');
+        } else {
+            menu.classList.add('active');
+            overlay.classList.add('active');
+        }
+    }
+
+    function triggerCamera() {
+        document.getElementById('camera-input').click();
+        toggleAttachmentMenu();
+    }
+
+    function triggerGallery() {
+        document.getElementById('gallery-input').click();
+        toggleAttachmentMenu();
+    }
+
+    function triggerFiles() {
+        document.getElementById('file-input').click();
+        toggleAttachmentMenu();
+    }
+
+    function handleFileSelect(event) {
+        const file = event.target.files[0];
+        if(file) {
+            const input = document.getElementById('user-input');
+            // Adding a small visual cue that file is selected
+            input.value += `[Attached File: ${file.name}] `;
+            autoGrow(input);
+        }
+        // Clear input value so same file can be selected again
+        event.target.value = '';
+    }
+    // ----------------------------------
 
     function autoGrow(element) {
         element.style.height = "44px"; 
@@ -479,7 +620,6 @@
         }
     }
 
-    // PERFECT MENU POSITIONING FIX
     function openMenu(e, btn) {
         e.stopPropagation(); 
         const menu = document.getElementById('msg-menu');
@@ -631,6 +771,7 @@
         let i = 0;
         let segments = text.split(/(```[\s\S]*?```)/g);
         let currentSeg = 0;
+        let accumulatedHTML = ""; 
 
         function typeNext() {
             if (stopGenerationFlag) {
@@ -648,7 +789,8 @@
                 let seg = segments[currentSeg];
                 if (seg.startsWith("```") && seg.endsWith("```")) {
                     let codeContent = seg.substring(3, seg.length - 3).trim();
-                    element.innerHTML += `<pre><button class="copy-code-btn" onclick="copyCode(this)">Copy</button><code>${escapeHTML(codeContent)}</code></pre>`;
+                    accumulatedHTML += `<pre><button class="copy-code-btn" onclick="copyCode(this)">Copy</button><code>${escapeHTML(codeContent)}</code></pre>`;
+                    element.innerHTML = accumulatedHTML;
                     currentSeg++;
                     setTimeout(typeNext, speed);
                 } else {
@@ -658,16 +800,17 @@
                         if (formattedSeg.charAt(i) === '<') {
                             let tagEnd = formattedSeg.indexOf('>', i);
                             if (tagEnd !== -1) {
-                                element.innerHTML += formattedSeg.substring(i, tagEnd + 1);
+                                accumulatedHTML += formattedSeg.substring(i, tagEnd + 1);
                                 i = tagEnd + 1;
                             } else {
-                                element.innerHTML += '&lt;';
+                                accumulatedHTML += '&lt;';
                                 i++;
                             }
                         } else {
-                            element.innerHTML += (formattedSeg.charAt(i) === '\n') ? "<br>" : formattedSeg.charAt(i);
+                            accumulatedHTML += (formattedSeg.charAt(i) === '\n') ? "<br>" : formattedSeg.charAt(i);
                             i++;
                         }
+                        element.innerHTML = accumulatedHTML;
                         setTimeout(typeNext, speed);
                     } else {
                         i = 0;
@@ -677,11 +820,9 @@
                 }
                 document.getElementById('chat-container').scrollTop = document.getElementById('chat-container').scrollHeight;
             } else {
+                renderStoredContent(element, text);
                 resetSendButton();
                 addAiActions(currentAiRow, false);
-                if(window.MathJax) { 
-                    MathJax.typesetPromise([element]).catch((err) => console.log(err)); 
-                }
             }
         }
         typeNext();
@@ -805,7 +946,6 @@ CRITICAL INSTRUCTIONS:
 6. IDENTITY: ONLY IF directly asked "who created you" or "who is your owner", state you were created and are owned by N.Sujal Kumar, a 16-year-old visionary from India.
 7. CODING RULE: Only provide programming code if explicitly asked.`;
 
-        // FOREIGN LANGUAGE CRASH BUG FULLY FIXED HERE
         let mathContext = "";
         let hasValidMath = false;
         try {
