@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content">
     <title>DATEX Ai.com</title>
     <link rel="icon" type="image/jpeg" href="logo.jpg.jpg">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -16,12 +16,11 @@
             background-color: #ffffff; 
             color: #333; 
             height: 100vh; 
-            height: 100dvh; 
+            height: 100dvh; /* Dynamic viewport height for modern browsers */
             display: flex; 
             flex-direction: column;
             overflow: hidden; 
             width: 100%; 
-            position: fixed; /* Wapas add kar diya tumhara original code */
             -webkit-user-select: none; 
             -moz-user-select: none; 
             -ms-user-select: none; 
@@ -50,28 +49,15 @@
         .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.1); display: none; z-index: 1000; cursor: pointer; }
         .overlay.active { display: block; }
 
-        .wrapper { 
-            flex: 1; 
-            display: flex; 
-            flex-direction: column; 
-            height: 100%; 
-            position: relative; 
-            width: 100%; 
-            overflow: hidden; 
-        }
-        
-        /* Header Fix: Isko top pe fix kar diya hai taaki keyboard aane pe ye na hite */
+        /* HEADER FIX: Header fixed above, will not move when keyboard opens */
         header { 
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
             display: flex; 
             justify-content: space-between; 
             align-items: center; 
             padding: 12px 20px; 
             border-bottom: 1px solid #f9f9f9; 
             background: #fff; 
+            flex-shrink: 0; 
             z-index: 100; 
         }
         
@@ -84,8 +70,18 @@
         .version-pill { font-size: 10px; background: #f0f0f0; display: inline-block; padding: 2px 10px; border-radius: 12px; color: #777; border: 1px solid #ddd; }
         .logo-container img { width: 42px; height: 42px; border-radius: 50%; object-fit: cover; border: 1.5px solid #eee; }
 
-        /* Padding update ki hai taaki message fixed header ke peeche na chhupe */
-        .main-content { flex: 1; display: flex; flex-direction: column; overflow-y: auto; padding: 75px 20px 140px 20px; width: 100%; max-width: 800px; margin: 0 auto; scrollbar-width: none; }
+        /* MAIN CONTENT FIX: Takes available space and scrolls internally */
+        .main-content { 
+            flex: 1; 
+            display: flex; 
+            flex-direction: column; 
+            overflow-y: auto; 
+            padding: 10px 20px 20px 20px; 
+            width: 100%; 
+            max-width: 800px; 
+            margin: 0 auto; 
+            scrollbar-width: none; 
+        }
         
         .welcome-screen { 
             display: flex;
@@ -117,17 +113,16 @@
         .ai-bubble { background-color: #fff; border: 1px solid #e5e7eb; border-bottom-left-radius: 4px; width: 100%; }
         .avatar { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; border: 1px solid #eee; flex-shrink: 0; }
 
-        /* Wapas tumhara purana fixed bottom container laga diya hai */
+        /* INPUT FIX: Fixed at the bottom of the flex container */
         .bottom-container { 
-            position: fixed; 
-            bottom: 0; 
-            left: 0;
             width: 100%; 
             background: #ffffff; 
             padding: 10px 20px 20px 20px; 
             display: flex; 
             justify-content: center; 
             z-index: 100;
+            flex-shrink: 0;
+            border-top: 1px solid #f9f9f9;
         }
         
         .input-bar-wrapper {
@@ -360,6 +355,7 @@
             else { addAiMessageToUI(msg.content, false, msgIdx); }
         });
         if(shouldToggleSidebar) toggleSidebar();
+        setTimeout(() => { container.scrollTop = container.scrollHeight; }, 50);
     }
 
     function createNewChat() {
@@ -495,24 +491,28 @@
         });
     }
 
+    // 🌟 LINK BUG FIX: Ab history refresh karne par bhi link perfect kaam karega
     function formatLinksAndStyles(text) {
         let formatted = text;
         formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-        formatted = formatted.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" class="ai-link">$1</a>');
         
-        let tempLinks = [];
-        formatted = formatted.replace(/<a[\s\S]*?<\/a>/g, function(match) {
-            tempLinks.push(match);
-            return `___A_TAG_${tempLinks.length - 1}___`;
+        let linksArray = [];
+        
+        // Replace markdown links securely
+        formatted = formatted.replace(/\[([^\]]+)\]\((https?:\/\/[^\)]+)\)/g, function(match, text, url) {
+            linksArray.push(`<a href="${url}" target="_blank" class="ai-link">${text}</a>`);
+            return `%%LINK${linksArray.length - 1}%%`;
         });
         
-        formatted = formatted.replace(/(^|\s)(https?:\/\/[^\s<()]+|www\.[^\s<()]+)/g, function(match, space, url) {
-            let fullUrl = url.startsWith('www.') ? 'https://' + url : url;
-            return space + '<a href="' + fullUrl + '" target="_blank" class="ai-link">' + url + '</a>';
+        // Replace raw URLs securely
+        formatted = formatted.replace(/(https?:\/\/[^\s<]+)/g, function(match, url) {
+            linksArray.push(`<a href="${url}" target="_blank" class="ai-link">${url}</a>`);
+            return `%%LINK${linksArray.length - 1}%%`;
         });
         
-        formatted = formatted.replace(/___A_TAG_(\d+)___/g, function(match, index) {
-            return tempLinks[index];
+        // Restore links back to text
+        formatted = formatted.replace(/%%LINK(\d+)%%/g, function(match, index) {
+            return linksArray[index];
         });
         
         return formatted;
