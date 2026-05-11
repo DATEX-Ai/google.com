@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
     <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.min.js"></script>
     
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; -webkit-tap-highlight-color: transparent; }
@@ -121,7 +122,7 @@
 
         .message-row { display: flex; width: 100%; margin: 15px 0; align-items: flex-start; gap: 12px; }
         .user-row { flex-direction: row-reverse; }
-        .ai-row { flex-direction: column; gap: 6px; } /* GEMINI STYLE AI LOGO FIX */
+        .ai-row { flex-direction: column; gap: 6px; } 
         
         .bubble-container { position: relative; max-width: 88%; display: flex; flex-direction: column; overflow: hidden; }
         .bubble { padding: 14px 20px; border-radius: 22px; font-size: 16px; line-height: 1.6; word-wrap: break-word; }
@@ -151,7 +152,7 @@
             border-radius: 35px; 
             display: flex; 
             align-items: flex-end; 
-            padding: 8px 12px 8px 22px; 
+            padding: 8px 12px 8px 20px; /* Equal padding top & bottom to perfectly center icons */
             width: 100%;
         }
         
@@ -167,7 +168,8 @@
             resize: none;
             max-height: 150px; 
             overflow-y: auto;
-            line-height: 1.4;
+            line-height: 24px; /* Exact line height */
+            height: 44px; /* Base height fixed to 44px to match icons */
             scrollbar-width: none; 
             -ms-overflow-style: none; 
         }
@@ -264,9 +266,11 @@
         <div class="bottom-container">
             <div class="input-bar-wrapper">
                 <div class="input-bar">
-                    <i class="fas fa-plus" style="color:#777; cursor:pointer; font-size: 18px; margin-right: 12px; margin-bottom: 12px;"></i>
+                    <div style="height: 44px; display: flex; align-items: center; margin-right: 12px;">
+                        <i class="fas fa-plus" style="color:#777; cursor:pointer; font-size: 18px;"></i>
+                    </div>
                     <textarea id="user-input" placeholder="Ask DATEX AI..." rows="1" oninput="autoGrow(this)"></textarea>
-                    <div class="actions-right" style="display:flex; align-items:center; margin-bottom: 3px;">
+                    <div class="actions-right" style="display:flex; align-items:center; height: 44px;">
                         <div id="mike-btn"><i class="fas fa-microphone"></i></div>
                         <button class="send-btn" onclick="handleSendClick()"><i class="fas fa-arrow-up"></i></button>
                     </div>
@@ -286,6 +290,8 @@
     }
 
     const GROQ_API_KEY = "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"; 
+    const TAVILY_API_KEY = "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"; // TAVILY INTERNET KEY
+
     let chatHistory = JSON.parse(localStorage.getItem('datex_full_history')) || [];
     let isNewSession = true;
     let selectedMsgRow = null;
@@ -300,8 +306,10 @@
     let currentAiRow = null;
 
     function autoGrow(element) {
-        element.style.height = "5px";
-        element.style.height = (element.scrollHeight) + "px";
+        element.style.height = "44px"; // Exact height set for 1 line
+        if (element.scrollHeight > 44) {
+            element.style.height = (element.scrollHeight) + "px";
+        }
     }
 
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -709,7 +717,7 @@
             
             sessionFinalText = "";
             input.value = "";
-            input.style.height = "auto";
+            input.style.height = "44px"; // Fixed to base height
 
             if (isNewSession) {
                 const newChat = { title: message.substring(0, 30), messages: [] };
@@ -728,6 +736,11 @@
             
             renderChatList();
             addUserMessageToUI(message, false, currentMsgIdx);
+        } else {
+            const lastUserMsg = chatHistory[activeChatIndex].messages[chatHistory[activeChatIndex].messages.length - 1];
+            if(lastUserMsg && lastUserMsg.role === 'user') {
+                message = lastUserMsg.content;
+            }
         }
 
         isGenerating = true;
@@ -749,16 +762,68 @@
 
         const systemPromptString = `You are DATEX AI. Your name is strictly 'DATEX AI'. You must never identify as Llama, Meta, or OpenAI. 
 
-CURRENT REAL-TIME DATA: Today is ${dateStr} and the current time is ${timeStr}.
+CURRENT REAL-TIME DATA: Today is ${dateStr} and the current time is ${timeStr}. DO NOT mention the date or time unless the user specifically asks for it.
 
 CRITICAL INSTRUCTIONS:
 1. BE NORMAL & NATURAL: Just talk normally like a human friend. DO NOT introduce yourself, DO NOT list your capabilities, and DO NOT mention your creator UNLESS the user explicitly asks. Directly answer the user's question.
-2. ADVANCED MATHEMATICS: Solve math problems perfectly step-by-step.
-3. WORLD KNOWLEDGE: Provide accurate facts, history, and real-time info when asked.
+2. ADVANCED MATHEMATICS: You are an expert mathematician. For ANY math problem, you MUST perform calculations step-by-step internally, double-check every arithmetic operation, and ensure 100% mathematical accuracy before providing the final answer. If a hidden System Note provides a math result, trust it implicitly and format it nicely for the user.
+3. WORLD KNOWLEDGE: Use provided System Notes about real-time internet search to give accurate, up-to-date answers. 
 4. PERSONALITY: Be exactly like Google's Gemini - conversational, empathetic, friendly, and highly intelligent.
 5. IDENTITY: ONLY IF directly asked "who created you" or "who is your owner", state you were created and are owned by N.Sujal Kumar, a 16-year-old visionary from India.
 6. CODING RULE: Only provide programming code if explicitly asked.
-7. LINKS: Provide valid, official links when relevant.`;
+7. LINKS: Provide valid, official links when relevant based on the search data.`;
+
+        let apiMessages = [
+            { "role": "system", "content": systemPromptString },
+            ...chatHistory[activeChatIndex].messages
+        ];
+
+        try {
+            const mathRegex = /(?:(?:\d+\.?\d*)\s*[\+\-\*\/\^]\s*)+(?:\d+\.?\d*)/g;
+            const matches = message.match(mathRegex);
+            if (matches) {
+                let mathContext = "System Note (Hidden): The exact result of the user's calculation is:\n";
+                let hasValidMath = false;
+                matches.forEach(match => {
+                    try {
+                        const result = math.evaluate(match);
+                        mathContext += `${match} = ${result}\n`;
+                        hasValidMath = true;
+                    } catch(e) {}
+                });
+                if (hasValidMath) {
+                    apiMessages.push({ "role": "system", "content": mathContext });
+                }
+            }
+        } catch(e) {}
+
+        const searchKeywords = ['aaj', 'today', 'news', 'khabar', 'price', 'match', 'score', 'latest', 'update', 'weather', 'mausam', 'kal', 'yesterday', 'current', 'stock', 'who won', 'kaun jeeta', 'batao', 'search'];
+        const needsSearch = searchKeywords.some(keyword => message.toLowerCase().includes(keyword));
+
+        if (needsSearch) {
+            bubble.innerText = "Searching the web...";
+            try {
+                const tavilyRes = await fetch("https://api.tavily.com/search", {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        "api_key": TAVILY_API_KEY,
+                        "query": message,
+                        "search_depth": "basic",
+                        "max_results": 3
+                    })
+                });
+                const tavilyData = await tavilyRes.json();
+                if (tavilyData && tavilyData.results && tavilyData.results.length > 0) {
+                    let searchResults = tavilyData.results.map(r => r.title + ": " + r.content).join('\n');
+                    let internetContext = `System Note (Real-Time Internet Data): Here are the latest internet search results for the user's query. Use this to give an accurate, up-to-date answer:\n${searchResults}\n`;
+                    apiMessages.push({ "role": "system", "content": internetContext });
+                }
+            } catch(e) {
+                console.log("Internet search failed", e);
+            }
+            bubble.innerText = "Thinking...";
+        }
 
         abortController = new AbortController();
 
@@ -768,10 +833,7 @@ CRITICAL INSTRUCTIONS:
                 headers: { 'Authorization': `Bearer ${GROQ_API_KEY}`, 'Content-Type': 'application/json' },
                 signal: abortController.signal,
                 body: JSON.stringify({
-                    "messages": [
-                        { "role": "system", "content": systemPromptString },
-                        ...chatHistory[activeChatIndex].messages
-                    ],
+                    "messages": apiMessages,
                     "model": "llama-3.3-70b-versatile"
                 })
             });
