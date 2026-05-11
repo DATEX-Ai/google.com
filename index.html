@@ -29,6 +29,7 @@
             position: fixed; 
             top: 0;
             left: 0;
+            /* COMPLETELY DISABLED BLUE HIGHLIGHT & LONG PRESS EVERYWHERE */
             -webkit-touch-callout: none; 
             -webkit-user-select: none; 
             -moz-user-select: none; 
@@ -36,14 +37,8 @@
             user-select: none; 
         }
 
-        .bubble, pre, code {
-            -webkit-user-select: text;
-            -moz-user-select: text;
-            -ms-user-select: text;
-            user-select: text;
-        }
-
         textarea, input {
+            /* ONLY INPUT AREA IS SELECTABLE */
             -webkit-user-select: auto;
             -moz-user-select: auto;
             -ms-user-select: auto;
@@ -223,7 +218,6 @@
             cursor: pointer !important;
             pointer-events: auto !important; 
             font-weight: 600 !important;
-            -webkit-user-select: auto !important;
         }
         .ai-link:hover {
             color: #1557b0 !important;
@@ -320,14 +314,13 @@
     let abortController = null;
     let currentAiRow = null;
 
-    // --- SCROLL TO HIDE MENU FIX ---
+    // SCROLL TO HIDE MENU FIX
     document.getElementById('chat-container').addEventListener('scroll', () => {
         if(document.getElementById('msg-menu').style.display === 'flex') {
             hideMsgMenu();
         }
     });
     window.addEventListener('scroll', hideMsgMenu);
-    // -------------------------------
 
     function autoGrow(element) {
         element.style.height = "44px"; 
@@ -816,7 +809,6 @@ CRITICAL INSTRUCTIONS:
         let mathContext = "";
         let hasValidMath = false;
         try {
-            // ONLY check for math if the string actually contains numbers AND operators
             if (/[\d]\s*[\+\-\*\/\^]\s*[\d]/.test(message)) {
                 const cleanMessage = message.replace(/,/g, '');
                 const mathRegex = /(?:(?:\d+\.?\d*)\s*[\+\-\*\/\^\(\)]\s*)+(?:\d+\.?\d*)/g;
@@ -906,7 +898,6 @@ CRITICAL INSTRUCTIONS:
             if (e.name === 'AbortError') {
                 bubble.innerText = "Generation stopped.";
             } else {
-                // FIXED THE FAKE "INTERNET CONNECTION" ERROR MESSAGE
                 bubble.innerText = "Server is currently busy or overloaded. Please try again in a few seconds."; 
             }
             resetSendButton();
