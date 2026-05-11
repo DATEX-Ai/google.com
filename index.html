@@ -217,18 +217,11 @@
             color: #1557b0 !important;
         }
 
-        .action-btn { 
-            background: transparent; 
-            border: none; 
-            color: #888; 
-            cursor: pointer; 
-            font-size: 15px; 
-            margin-top: 8px; 
-            margin-left: 10px; 
-            display: flex; 
-            align-items: center; 
-            transition: 0.2s; 
-        }
+        /* 3-Dot & Regenerate Action Bar Styles */
+        .action-bar { display: flex; gap: 15px; margin-top: 5px; padding: 0 10px; }
+        .user-action-bar { justify-content: flex-end; }
+        .ai-action-bar { justify-content: flex-start; }
+        .action-btn { background: transparent; border: none; color: #aaa; cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; transition: 0.2s; padding: 5px; }
         .action-btn:hover { color: #333; }
     </style>
 </head>
@@ -295,7 +288,6 @@
     let chatHistory = JSON.parse(localStorage.getItem('datex_full_history')) || [];
     let isNewSession = true;
     let selectedMsgRow = null;
-    let longPressTimer;
     let isRecording = false;
     let activeChatIndex = -1;
     let sessionFinalText = ""; 
@@ -326,7 +318,6 @@
             }
             const btn = document.getElementById('mike-btn');
             btn.classList.add('recording'); 
-            // Yahan se stop-square hata diya hai, ab sirf mic icon hi rahega aur black circle ban jayega
             btn.innerHTML = '<i class="fas fa-microphone"></i>'; 
         };
         recognition.onend = () => { 
@@ -420,8 +411,12 @@
         const row = document.createElement('div');
         row.className = 'message-row user-row';
         row.setAttribute('data-index', msgIdx); 
-        row.innerHTML = `<div class="bubble-container"><div class="bubble user-bubble">${text}</div></div>`;
-        attachMsgEvents(row);
+        row.innerHTML = `<div class="bubble-container">
+                            <div class="bubble user-bubble">${text}</div>
+                            <div class="action-bar user-action-bar">
+                                <button class="action-btn" onclick="openMenu(event, this)"><i class="fas fa-ellipsis-v"></i></button>
+                            </div>
+                         </div>`;
         container.appendChild(row);
         container.scrollTop = container.scrollHeight;
     }
@@ -433,31 +428,39 @@
         row.setAttribute('data-index', msgIdx); 
         row.innerHTML = `<img src="logo.jpg.jpg" class="avatar"><div class="bubble-container"><div class="bubble ai-bubble"></div></div>`;
         const bubble = row.querySelector('.ai-bubble');
-        attachMsgEvents(row);
         container.appendChild(row);
-        if(isNew) { typeEffect(bubble, text, 5); } 
-        else { renderStoredContent(bubble, text); }
+        
+        if(isNew) { 
+            typeEffect(bubble, text, 5); 
+        } else { 
+            renderStoredContent(bubble, text); 
+            addAiActions(row, false);
+        }
         container.scrollTop = container.scrollHeight;
     }
 
-    function attachMsgEvents(row) {
-        row.addEventListener('touchstart', (e) => {
-            if (e.target.tagName.toLowerCase() === 'a') return; 
-            selectedMsgRow = row;
-            longPressTimer = setTimeout(() => { showMsgMenu(e); }, 600);
-        }, {passive: true});
-        row.addEventListener('touchend', () => { clearTimeout(longPressTimer); });
-        row.addEventListener('contextmenu', (e) => { 
-            if (e.target.tagName.toLowerCase() === 'a') return;
-            e.preventDefault(); 
-            selectedMsgRow = row; showMsgMenu(e); 
-        });
+    function addAiActions(row, isStopped) {
+        if (!row) return;
+        const container = row.querySelector('.bubble-container');
+        if (container && !container.querySelector('.action-bar')) {
+            let html = '<div class="action-bar ai-action-bar">';
+            if (isStopped) {
+                html += `<button class="action-btn" onclick="regenerateMessage(this)"><i class="fas fa-redo"></i></button>`;
+            }
+            html += `<button class="action-btn" onclick="openMenu(event, this)"><i class="fas fa-ellipsis-v"></i></button>`;
+            html += '</div>';
+            container.insertAdjacentHTML('beforeend', html);
+        }
     }
 
-    function showMsgMenu(e) {
+    function openMenu(e, btn) {
+        e.stopPropagation(); 
+        selectedMsgRow = btn.closest('.message-row');
+        
         const menu = document.getElementById('msg-menu');
         const editBtn = document.getElementById('edit-btn-ui');
         const deleteBtn = document.getElementById('delete-btn-ui');
+        
         if(selectedMsgRow.classList.contains('ai-row')) {
             editBtn.style.display = 'none';
             deleteBtn.style.display = 'none';
@@ -465,22 +468,31 @@
             editBtn.style.display = 'flex';
             deleteBtn.style.display = 'flex';
         }
-        const x = e.touches ? e.touches[0].clientX : e.clientX;
-        const y = e.touches ? e.touches[0].clientY : e.clientY;
+        
+        const rect = btn.getBoundingClientRect();
+        let x = rect.left;
+        let y = rect.bottom + 8;
+        
+        if (x + 140 > window.innerWidth) x = window.innerWidth - 150;
+        if (y + 120 > window.innerHeight) y = rect.top - 120; 
+        
+        menu.style.left = x + 'px';
+        menu.style.top = y + 'px';
         menu.style.display = 'flex';
-        menu.style.left = Math.min(x, window.innerWidth - 150) + 'px';
-        menu.style.top = Math.min(y, window.innerHeight - 150) + 'px';
+        
         if(window.navigator.vibrate) window.navigator.vibrate(50);
     }
 
     function hideMsgMenu() { document.getElementById('msg-menu').style.display = 'none'; }
 
     function copyMsg() {
+        if(!selectedMsgRow) return;
         const text = selectedMsgRow.querySelector('.bubble').innerText;
         navigator.clipboard.writeText(text).then(() => { hideMsgMenu(); });
     }
 
     function editMsg() {
+        if(!selectedMsgRow) return;
         editingMsgIdx = parseInt(selectedMsgRow.getAttribute('data-index'));
         const userText = selectedMsgRow.querySelector('.bubble').innerText;
         const input = document.getElementById('user-input');
@@ -587,7 +599,7 @@
                     localStorage.setItem('datex_full_history', JSON.stringify(chatHistory));
                 }
                 resetSendButton();
-                addRegenerateButton(currentAiRow);
+                addAiActions(currentAiRow, true); 
                 return;
             }
 
@@ -625,6 +637,7 @@
                 document.getElementById('chat-container').scrollTop = document.getElementById('chat-container').scrollHeight;
             } else {
                 resetSendButton();
+                addAiActions(currentAiRow, false);
                 if(window.MathJax) { 
                     MathJax.typesetPromise([element]).catch((err) => console.log(err)); 
                 }
@@ -648,7 +661,7 @@
         }
         resetSendButton();
         if (currentAiRow) {
-            addRegenerateButton(currentAiRow);
+            addAiActions(currentAiRow, true);
         }
     }
 
@@ -657,15 +670,6 @@
         const sendBtn = document.querySelector('.send-btn');
         if(sendBtn) {
             sendBtn.innerHTML = '<i class="fas fa-arrow-up"></i>';
-        }
-    }
-
-    function addRegenerateButton(row) {
-        if (!row) return;
-        const container = row.querySelector('.bubble-container');
-        if (container && !container.querySelector('.action-btn')) {
-            const btnHtml = `<button class="action-btn" onclick="regenerateMessage(this)"><i class="fas fa-redo"></i></button>`;
-            container.insertAdjacentHTML('beforeend', btnHtml);
         }
     }
 
@@ -775,7 +779,6 @@ CRITICAL INSTRUCTIONS:
             const aiMsgIdx = chatHistory[activeChatIndex].messages.length;
             chatHistory[activeChatIndex].messages.push({ role: "assistant", content: aiResponse });
             aiRow.setAttribute('data-index', aiMsgIdx);
-            attachMsgEvents(aiRow);
             localStorage.setItem('datex_full_history', JSON.stringify(chatHistory));
             bubble.innerHTML = "";
             typeEffect(bubble, aiResponse, 5);
@@ -783,10 +786,11 @@ CRITICAL INSTRUCTIONS:
             if (e.name === 'AbortError') {
                 bubble.innerText = "Generation stopped.";
                 resetSendButton();
-                addRegenerateButton(currentAiRow);
+                addAiActions(currentAiRow, true);
             } else {
                 bubble.innerText = "Error connecting to AI. Please check your internet connection."; 
                 resetSendButton();
+                addAiActions(currentAiRow, false);
             }
         }
     }
