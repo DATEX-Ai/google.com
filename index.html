@@ -25,7 +25,7 @@
             display: flex; 
             flex-direction: column;
             overflow: hidden; 
-            position: fixed; /* Locks the entire page */
+            position: fixed; 
             top: 0;
             left: 0;
             -webkit-user-select: none; 
@@ -268,7 +268,6 @@
     </div>
 
     <script>
-    // FIX FOR MOBILE KEYBOARD (Visual Viewport API)
     if (window.visualViewport) {
         const resizeHandler = () => {
             document.body.style.height = window.visualViewport.height + 'px';
@@ -353,6 +352,7 @@
         });
     }
 
+    // FIX 1: Sidebar stays open during delete
     function deleteHistoryItem(event, index) {
         if(event) event.stopPropagation();
         chatHistory.splice(index, 1);
@@ -360,7 +360,7 @@
         renderChatList();
         
         if (activeChatIndex === index) {
-            createNewChat();
+            createNewChat(true); // Don't toggle sidebar
         } else if (activeChatIndex > index) {
             activeChatIndex--; 
         }
@@ -379,7 +379,7 @@
         if(shouldToggleSidebar) toggleSidebar();
     }
 
-    function createNewChat() {
+    function createNewChat(keepSidebarOpen = false) {
         isNewSession = true;
         activeChatIndex = -1;
         editingMsgIdx = -1; 
@@ -387,7 +387,7 @@
         const input = document.getElementById('user-input');
         input.value = "";
         autoGrow(input);
-        if(document.getElementById('sidebar').classList.contains('active')) toggleSidebar();
+        if(!keepSidebarOpen && document.getElementById('sidebar').classList.contains('active')) toggleSidebar();
     }
 
     function toggleSidebar() {
@@ -600,8 +600,12 @@
         typeNext();
     }
 
+    // FIX 2: Mic stops and message sends instantly
     async function callDatexAPI() {
-        if (isRecording) { recognition.stop(); } 
+        if (isRecording && recognition) { 
+            recognition.stop(); 
+        } 
+        
         const input = document.getElementById('user-input');
         const message = input.value.trim();
         if (!message) return;
