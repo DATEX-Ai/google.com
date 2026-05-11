@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>DATEX Ai.com</title>
+    <title>DATEX AI.com</title>
     <link rel="icon" type="image/jpeg" href="logo.jpg.jpg">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
@@ -245,19 +245,19 @@
                     <div class="menu-line line-3"></div>
                 </div>
             </div>
-            <div class="header-center"><div class="model-name">DATEX Ai Model</div><div class="version-pill">Fast 1.5</div></div>
+            <div class="header-center"><div class="model-name">DATEX AI Model</div><div class="version-pill">Fast 1.5</div></div>
             <div class="header-right"><div class="logo-container"><img src="logo.jpg.jpg" alt="Logo"></div></div>
         </header>
 
         <main class="main-content" id="chat-container">
-            <div class="welcome-screen" id="welcome-screen">Welcome To<br><span>DATEX Ai</span></div>
+            <div class="welcome-screen" id="welcome-screen">Welcome To<br><span>DATEX AI</span></div>
         </main>
 
         <div class="bottom-container">
             <div class="input-bar-wrapper">
                 <div class="input-bar">
                     <i class="fas fa-plus" style="color:#777; cursor:pointer; font-size: 18px; margin-right: 12px; margin-bottom: 12px;"></i>
-                    <textarea id="user-input" placeholder="Ask DATEX Ai..." rows="1" oninput="autoGrow(this)"></textarea>
+                    <textarea id="user-input" placeholder="Ask DATEX AI..." rows="1" oninput="autoGrow(this)"></textarea>
                     <div class="actions-right" style="display:flex; align-items:center; margin-bottom: 3px;">
                         <div id="mike-btn"><i class="fas fa-microphone"></i></div>
                         <button class="send-btn" onclick="callDatexAPI()"><i class="fas fa-arrow-up"></i></button>
@@ -352,7 +352,6 @@
         });
     }
 
-    // FIX 1: Sidebar stays open during delete
     function deleteHistoryItem(event, index) {
         if(event) event.stopPropagation();
         chatHistory.splice(index, 1);
@@ -360,7 +359,7 @@
         renderChatList();
         
         if (activeChatIndex === index) {
-            createNewChat(true); // Don't toggle sidebar
+            createNewChat(true); 
         } else if (activeChatIndex > index) {
             activeChatIndex--; 
         }
@@ -383,7 +382,7 @@
         isNewSession = true;
         activeChatIndex = -1;
         editingMsgIdx = -1; 
-        document.getElementById('chat-container').innerHTML = `<div class="welcome-screen" id="welcome-screen">Welcome To<br><span>DATEX Ai</span></div>`;
+        document.getElementById('chat-container').innerHTML = `<div class="welcome-screen" id="welcome-screen">Welcome To<br><span>DATEX AI</span></div>`;
         const input = document.getElementById('user-input');
         input.value = "";
         autoGrow(input);
@@ -600,15 +599,23 @@
         typeNext();
     }
 
-    // FIX 2: Mic stops and message sends instantly
     async function callDatexAPI() {
-        if (isRecording && recognition) { 
-            recognition.stop(); 
-        } 
+        try {
+            if (isRecording && recognition) {
+                recognition.stop();
+            }
+        } catch(e) {}
         
+        isRecording = false;
+        const btn = document.getElementById('mike-btn');
+        btn.classList.remove('recording');
+        btn.innerHTML = '<i class="fas fa-microphone"></i>';
+
         const input = document.getElementById('user-input');
         const message = input.value.trim();
         if (!message) return;
+        
+        sessionFinalText = "";
 
         if (isNewSession) {
             const newChat = { title: message.substring(0, 30), messages: [] };
@@ -642,17 +649,17 @@
         const dateStr = now.toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
         const timeStr = now.toLocaleTimeString('en-IN');
 
-        const systemPromptString = `You are DATEX Ai. Your name is strictly 'DATEX Ai'. You must never identify as Llama, Meta, or OpenAI. 
+        const systemPromptString = `You are DATEX AI. Your name is strictly 'DATEX AI'. You must never identify as Llama, Meta, or OpenAI. 
 
-CURRENT REAL-TIME CLOCK: Today is ${dateStr} and the current time is ${timeStr}.
+CURRENT REAL-TIME DATA: Today is ${dateStr} and the current time is ${timeStr}. You have access to a full calendar. Use this to identify today's date, day, and mention any festivals or special events associated with this date using your internal knowledge.
 
-CRITICAL RULES:
-1. EXTREME INTELLIGENCE: You possess immense knowledge. Always double-check math calculations internally.
-2. NO FAKE LINKS (IMPORTANT): You DO NOT have live internet access to search YouTube or specific videos. If a user asks for a specific creator's video link, DO NOT hallucinate or guess the URL. Honestly apologize and state: "I don't have live internet access to search for specific YouTube videos right now."
-3. NO RANDOM CODE: DO NOT output markdown code blocks (\`\`\`) UNLESS the user explicitly asks for code.
-4. IDENTITY: Do not start conversations by listing your name, creator, or capabilities. If asked who created you, your owner, CEO, founder, or co-founder, state you were created and are owned by N.Sujal Kumar, a 16-year-old visionary from India.
-
-Your communication style must be exactly like Google's Gemini - extremely conversational, friendly, and helpful.`;
+CRITICAL INSTRUCTIONS:
+1. ADVANCED MATHEMATICS & CALCULATOR: You act as a high-performance computational engine. You can solve world-class difficult math problems. ALWAYS think step-by-step internally and verify your work to ensure 100% correct answers.
+2. WORLD KNOWLEDGE: You have complete access to general knowledge about history, current events, and science. You function like a real-time information browser.
+3. PERSONALITY: Your communication style is exactly like Google's Gemini - conversational, empathetic, friendly, and highly intelligent.
+4. IDENTITY: If asked who created you, your owner, CEO, founder, or co-founder, state you were created and are owned by N.Sujal Kumar, a 16-year-old visionary from India.
+5. CODING RULE: ONLY provide programming code (Python, Java, etc.) if the user explicitly asks for code in a specific language. Otherwise, communicate in natural language.
+6. LINKS: Provide valid, official links for videos or information when relevant based on your knowledge base.`;
 
         try {
             const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
@@ -680,6 +687,9 @@ Your communication style must be exactly like Google's Gemini - extremely conver
 
     document.getElementById('user-input').addEventListener('keydown', (e) => {
         if (e.key === 'Enter' && !e.shiftKey) {
+            if (window.innerWidth <= 768 || ('ontouchstart' in window)) {
+                return; 
+            }
             e.preventDefault();
             callDatexAPI();
         }
