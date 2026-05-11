@@ -29,10 +29,19 @@
             position: fixed; 
             top: 0;
             left: 0;
+            /* STOPPING DEFAULT OS VIBRATION AND LONG PRESS POPUPS */
+            -webkit-touch-callout: none; 
             -webkit-user-select: none; 
             -moz-user-select: none; 
             -ms-user-select: none; 
             user-select: none; 
+        }
+
+        .bubble, pre, code {
+            -webkit-user-select: text;
+            -moz-user-select: text;
+            -ms-user-select: text;
+            user-select: text;
         }
 
         textarea, input {
@@ -280,6 +289,13 @@
     </div>
 
     <script>
+    // PREVENT NATIVE LONG PRESS MENU & VIBRATION EVERYWHERE EXCEPT TEXT AREAS
+    document.addEventListener('contextmenu', function(e) {
+        if (e.target.tagName !== 'TEXTAREA' && e.target.tagName !== 'INPUT') {
+            e.preventDefault();
+        }
+    });
+
     if (window.visualViewport) {
         const resizeHandler = () => {
             document.body.style.height = window.visualViewport.height + 'px';
@@ -462,11 +478,19 @@
         }
     }
 
+    // TOGGLE MENU FIX
     function openMenu(e, btn) {
         e.stopPropagation(); 
-        selectedMsgRow = btn.closest('.message-row');
-        
         const menu = document.getElementById('msg-menu');
+        const row = btn.closest('.message-row');
+        
+        // Agar pehle se hi same message par open hai, toh usko band kar do (Toggle feature)
+        if (menu.style.display === 'flex' && selectedMsgRow === row) {
+            hideMsgMenu();
+            return;
+        }
+
+        selectedMsgRow = row;
         const editBtn = document.getElementById('edit-btn-ui');
         const deleteBtn = document.getElementById('delete-btn-ui');
         
@@ -488,8 +512,6 @@
         menu.style.left = x + 'px';
         menu.style.top = y + 'px';
         menu.style.display = 'flex';
-        
-        // VIBRATION COMPLETELY REMOVED FROM EVERYWHERE!
     }
 
     function hideMsgMenu() { document.getElementById('msg-menu').style.display = 'none'; }
@@ -595,10 +617,12 @@
         }
     }
 
+    // TYPE EFFECT BUG FIX: Using an accumulated string to prevent breaking HTML tags
     function typeEffect(element, text, speed) {
         let i = 0;
         let segments = text.split(/(```[\s\S]*?```)/g);
         let currentSeg = 0;
+        let accumulatedHTML = ""; 
 
         function typeNext() {
             if (stopGenerationFlag) {
@@ -616,7 +640,8 @@
                 let seg = segments[currentSeg];
                 if (seg.startsWith("```") && seg.endsWith("```")) {
                     let codeContent = seg.substring(3, seg.length - 3).trim();
-                    element.innerHTML += `<pre><button class="copy-code-btn" onclick="copyCode(this)">Copy</button><code>${escapeHTML(codeContent)}</code></pre>`;
+                    accumulatedHTML += `<pre><button class="copy-code-btn" onclick="copyCode(this)">Copy</button><code>${escapeHTML(codeContent)}</code></pre>`;
+                    element.innerHTML = accumulatedHTML;
                     currentSeg++;
                     setTimeout(typeNext, speed);
                 } else {
@@ -626,16 +651,17 @@
                         if (formattedSeg.charAt(i) === '<') {
                             let tagEnd = formattedSeg.indexOf('>', i);
                             if (tagEnd !== -1) {
-                                element.innerHTML += formattedSeg.substring(i, tagEnd + 1);
+                                accumulatedHTML += formattedSeg.substring(i, tagEnd + 1);
                                 i = tagEnd + 1;
                             } else {
-                                element.innerHTML += '&lt;';
+                                accumulatedHTML += '&lt;';
                                 i++;
                             }
                         } else {
-                            element.innerHTML += (formattedSeg.charAt(i) === '\n') ? "<br>" : formattedSeg.charAt(i);
+                            accumulatedHTML += (formattedSeg.charAt(i) === '\n') ? "<br>" : formattedSeg.charAt(i);
                             i++;
                         }
+                        element.innerHTML = accumulatedHTML; 
                         setTimeout(typeNext, speed);
                     } else {
                         i = 0;
@@ -768,41 +794,54 @@ CRITICAL INSTRUCTIONS:
 1. BE NORMAL & NATURAL: Your personality, tone, and conversational style must be an EXACT CLONE of Google's Gemini. Be conversational, empathetic, friendly, and highly intelligent.
 2. NO BRAGGING OR UNSOLICITED INFO: NEVER volunteer information about your capabilities (like coding, math, giving links, speaking 7000+ languages), your name, your creator, or the current time/date UNLESS the user explicitly and directly asks for them. Keep your answers directly focused on the user's prompt.
 3. MULTILINGUAL CAPABILITY: You understand and can converse fluently in all global languages (7000+). Always respond naturally in the language the user is speaking. NEVER state that you can speak 7000+ languages unless directly asked.
-4. ADVANCED MATHEMATICS: You are an expert mathematician. For ANY math problem, you MUST perform calculations step-by-step internally. IF a secret System Note provides a math result for the user's query, YOU MUST TRUST IT IMPLICITLY and output that exact result as your final answer.
-5. LIVE INTERNET & ANY LINK: You HAVE real-time live internet access. If a user asks for a link to ANY website, platform, video, creator, or resource on the entire internet, provide the EXACT valid URL starting with https:// so it is clickable. Format it nicely like [Website Name](https://...).
+4. ADVANCED MATHEMATICS (STRICT): A backend calculator solves math for you. IF a secret System Note provides a math result, YOU ARE FORBIDDEN from calculating it yourself. You MUST copy the exact number from the secret note and present it as your final answer.
+5. LIVE INTERNET & FAKE LINKS: You HAVE real-time live internet access. DO NOT INVENT, GUESS, OR HALLUCINATE LINKS. If you do not have the exact URL provided in the [System Note (Real-Time Internet Data)], you MUST state that you don't have the link. Only format provided URLs like [Website Name](https://...).
 6. IDENTITY: ONLY IF directly asked "who created you" or "who is your owner", state you were created and are owned by N.Sujal Kumar, a 16-year-old visionary from India.
 7. CODING RULE: Only provide programming code if explicitly asked.`;
 
+        // MATH LOGIC FIX
+        let mathContext = "";
+        let hasValidMath = false;
         try {
             const cleanMessage = message.replace(/,/g, '');
-            const mathRegex = /(?:(?:\d+\.?\d*)\s*[\+\-\*\/\^\(\)]\s*)+(?:\d+\.?\d*)/g;
-            const matches = cleanMessage.match(mathRegex);
-            
-            if (matches) {
-                let mathContext = "";
-                let hasValidMath = false;
-                matches.forEach(match => {
-                    try {
-                        if (/[\+\-\*\/\^]/.test(match)) {
-                            const result = math.evaluate(match);
-                            mathContext += `${match} = ${result}\n`;
-                            hasValidMath = true;
-                        }
-                    } catch(e) {}
-                });
-                
-                if (hasValidMath) {
-                    dynamicSystemPrompt += `\n\n[SECRET SYSTEM NOTE]: The user asked a math calculation. The exact, 100% correct result calculated by the backend is:\n${mathContext}\nYou MUST use this exact result in your final answer. Do not try to recalculate it yourself!`;
-                }
+            const fullRes = math.evaluate(cleanMessage);
+            if(fullRes !== undefined && typeof fullRes !== 'function' && !isNaN(fullRes)) {
+                mathContext += `${message} = ${fullRes}\n`;
+                hasValidMath = true;
             }
         } catch(e) {}
+        
+        if (!hasValidMath) {
+            try {
+                const cleanMessage = message.replace(/,/g, '');
+                const mathRegex = /(?:(?:\d+\.?\d*)\s*[\+\-\*\/\^\(\)]\s*)+(?:\d+\.?\d*)/g;
+                const matches = cleanMessage.match(mathRegex);
+                
+                if (matches) {
+                    matches.forEach(match => {
+                        try {
+                            if (/[\+\-\*\/\^]/.test(match)) {
+                                const result = math.evaluate(match);
+                                if(result !== undefined && !isNaN(result)) {
+                                    mathContext += `${match} = ${result}\n`;
+                                    hasValidMath = true;
+                                }
+                            }
+                        } catch(e) {}
+                    });
+                }
+            } catch(e) {}
+        }
+
+        if (hasValidMath) {
+            dynamicSystemPrompt += `\n\n[SECRET SYSTEM NOTE]: The user asked a math calculation. The exact, 100% correct result calculated by the backend is:\n${mathContext}\nYou MUST use this exact result in your final answer. Do not try to recalculate it yourself!`;
+        }
 
         let apiMessages = [
             { "role": "system", "content": dynamicSystemPrompt },
             ...chatHistory[activeChatIndex].messages
         ];
 
-        // ADDED 'url', 'site', 'browser', 'google' for FULL INTERNET FETCHING
         const searchKeywords = ['aaj', 'today', 'news', 'khabar', 'price', 'match', 'score', 'latest', 'update', 'weather', 'mausam', 'kal', 'yesterday', 'current', 'stock', 'who won', 'kaun jeeta', 'batao', 'search', 'link', 'youtube', 'video', 'channel', 'instagram', 'linkedin', 'facebook', 'twitter', 'website', 'profile', 'account', 'url', 'site', 'browser', 'google'];
         const needsSearch = searchKeywords.some(keyword => message.toLowerCase().includes(keyword));
 
