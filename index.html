@@ -152,7 +152,7 @@
             border-radius: 35px; 
             display: flex; 
             align-items: flex-end; 
-            padding: 8px 12px 8px 20px; /* Equal padding top & bottom to perfectly center icons */
+            padding: 8px 12px 8px 20px; 
             width: 100%;
         }
         
@@ -168,8 +168,8 @@
             resize: none;
             max-height: 150px; 
             overflow-y: auto;
-            line-height: 24px; /* Exact line height */
-            height: 44px; /* Base height fixed to 44px to match icons */
+            line-height: 24px; 
+            height: 44px; 
             scrollbar-width: none; 
             -ms-overflow-style: none; 
         }
@@ -306,7 +306,7 @@
     let currentAiRow = null;
 
     function autoGrow(element) {
-        element.style.height = "44px"; // Exact height set for 1 line
+        element.style.height = "44px"; 
         if (element.scrollHeight > 44) {
             element.style.height = (element.scrollHeight) + "px";
         }
@@ -420,6 +420,7 @@
         const row = document.createElement('div');
         row.className = 'message-row user-row';
         row.setAttribute('data-index', msgIdx); 
+        // Long press hata diya gaya hai, menu direct 3-dot se khulega
         row.innerHTML = `<div class="bubble-container">
                             <div class="bubble user-bubble">${text}</div>
                             <div class="action-bar user-action-bar">
@@ -435,6 +436,7 @@
         const row = document.createElement('div');
         row.className = 'message-row ai-row';
         row.setAttribute('data-index', msgIdx); 
+        // Long press hata diya gaya hai
         row.innerHTML = `<img src="logo.jpg.jpg" class="avatar"><div class="bubble-container"><div class="bubble ai-bubble"></div></div>`;
         const bubble = row.querySelector('.ai-bubble');
         container.appendChild(row);
@@ -489,7 +491,7 @@
         menu.style.top = y + 'px';
         menu.style.display = 'flex';
         
-        if(window.navigator.vibrate) window.navigator.vibrate(50);
+        if(window.navigator.vibrate) window.navigator.vibrate(50); // Sirf 3-dot dabaane par minor vibration
     }
 
     function hideMsgMenu() { document.getElementById('msg-menu').style.display = 'none'; }
@@ -717,7 +719,7 @@
             
             sessionFinalText = "";
             input.value = "";
-            input.style.height = "44px"; // Fixed to base height
+            input.style.height = "44px"; 
 
             if (isNewSession) {
                 const newChat = { title: message.substring(0, 30), messages: [] };
@@ -760,43 +762,56 @@
         const dateStr = now.toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
         const timeStr = now.toLocaleTimeString('en-IN');
 
-        const systemPromptString = `You are DATEX AI. Your name is strictly 'DATEX AI'. You must never identify as Llama, Meta, or OpenAI. 
+        let dynamicSystemPrompt = `You are DATEX AI. Your name is strictly 'DATEX AI'. You must never identify as Llama, Meta, or OpenAI. 
 
 CURRENT REAL-TIME DATA: Today is ${dateStr} and the current time is ${timeStr}. DO NOT mention the date or time unless the user specifically asks for it.
 
 CRITICAL INSTRUCTIONS:
 1. BE NORMAL & NATURAL: Just talk normally like a human friend. DO NOT introduce yourself, DO NOT list your capabilities, and DO NOT mention your creator UNLESS the user explicitly asks. Directly answer the user's question.
-2. ADVANCED MATHEMATICS: You are an expert mathematician. For ANY math problem, you MUST perform calculations step-by-step internally, double-check every arithmetic operation, and ensure 100% mathematical accuracy before providing the final answer. If a hidden System Note provides a math result, trust it implicitly and format it nicely for the user.
-3. WORLD KNOWLEDGE: Use provided System Notes about real-time internet search to give accurate, up-to-date answers. 
+2. ADVANCED MATHEMATICS: You are an expert mathematician. For ANY math problem, you MUST perform calculations step-by-step internally. IF a secret System Note provides a math result for the user's query, YOU MUST TRUST IT IMPLICITLY and output that exact result as your final answer.
+3. LIVE INTERNET ACCESS: You HAVE real-time live internet access. If a user asks if you can search the web, know current news, or browse the internet, PROUDLY SAY YES.
 4. PERSONALITY: Be exactly like Google's Gemini - conversational, empathetic, friendly, and highly intelligent.
 5. IDENTITY: ONLY IF directly asked "who created you" or "who is your owner", state you were created and are owned by N.Sujal Kumar, a 16-year-old visionary from India.
-6. CODING RULE: Only provide programming code if explicitly asked.
-7. LINKS: Provide valid, official links when relevant based on the search data.`;
+6. CODING RULE: Only provide programming code if explicitly asked.`;
 
-        let apiMessages = [
-            { "role": "system", "content": systemPromptString },
-            ...chatHistory[activeChatIndex].messages
-        ];
-
+        // ==========================================
+        // 1. SECRET MATH ENGINE LOGIC (100% FIXED)
+        // ==========================================
         try {
-            const mathRegex = /(?:(?:\d+\.?\d*)\s*[\+\-\*\/\^]\s*)+(?:\d+\.?\d*)/g;
-            const matches = message.match(mathRegex);
+            // Remove commas from numbers so the math engine doesn't get confused (e.g., 100,000 + 20)
+            const cleanMessage = message.replace(/,/g, '');
+            const mathRegex = /(?:(?:\d+\.?\d*)\s*[\+\-\*\/\^\(\)]\s*)+(?:\d+\.?\d*)/g;
+            const matches = cleanMessage.match(mathRegex);
+            
             if (matches) {
-                let mathContext = "System Note (Hidden): The exact result of the user's calculation is:\n";
+                let mathContext = "";
                 let hasValidMath = false;
                 matches.forEach(match => {
                     try {
-                        const result = math.evaluate(match);
-                        mathContext += `${match} = ${result}\n`;
-                        hasValidMath = true;
+                        // Make sure it contains an operator, not just a plain number
+                        if (/[\+\-\*\/\^]/.test(match)) {
+                            const result = math.evaluate(match);
+                            mathContext += `${match} = ${result}\n`;
+                            hasValidMath = true;
+                        }
                     } catch(e) {}
                 });
+                
+                // Inject directly into the core system prompt to force the AI to see it
                 if (hasValidMath) {
-                    apiMessages.push({ "role": "system", "content": mathContext });
+                    dynamicSystemPrompt += `\n\n[SECRET SYSTEM NOTE]: The user asked a math calculation. The exact, 100% correct result calculated by the backend is:\n${mathContext}\nYou MUST use this exact result in your final answer. Do not try to recalculate it yourself!`;
                 }
             }
         } catch(e) {}
 
+        let apiMessages = [
+            { "role": "system", "content": dynamicSystemPrompt },
+            ...chatHistory[activeChatIndex].messages
+        ];
+
+        // ==========================================
+        // 2. LIVE INTERNET SEARCH LOGIC (TAVILY API)
+        // ==========================================
         const searchKeywords = ['aaj', 'today', 'news', 'khabar', 'price', 'match', 'score', 'latest', 'update', 'weather', 'mausam', 'kal', 'yesterday', 'current', 'stock', 'who won', 'kaun jeeta', 'batao', 'search'];
         const needsSearch = searchKeywords.some(keyword => message.toLowerCase().includes(keyword));
 
