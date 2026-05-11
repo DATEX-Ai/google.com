@@ -290,7 +290,7 @@
     }
 
     const GROQ_API_KEY = "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"; 
-    const TAVILY_API_KEY = "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"; // TAVILY INTERNET KEY
+    const TAVILY_API_KEY = "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"; 
 
     let chatHistory = JSON.parse(localStorage.getItem('datex_full_history')) || [];
     let isNewSession = true;
@@ -420,7 +420,6 @@
         const row = document.createElement('div');
         row.className = 'message-row user-row';
         row.setAttribute('data-index', msgIdx); 
-        // Long press hata diya gaya hai, menu direct 3-dot se khulega
         row.innerHTML = `<div class="bubble-container">
                             <div class="bubble user-bubble">${text}</div>
                             <div class="action-bar user-action-bar">
@@ -436,7 +435,6 @@
         const row = document.createElement('div');
         row.className = 'message-row ai-row';
         row.setAttribute('data-index', msgIdx); 
-        // Long press hata diya gaya hai
         row.innerHTML = `<img src="logo.jpg.jpg" class="avatar"><div class="bubble-container"><div class="bubble ai-bubble"></div></div>`;
         const bubble = row.querySelector('.ai-bubble');
         container.appendChild(row);
@@ -491,7 +489,7 @@
         menu.style.top = y + 'px';
         menu.style.display = 'flex';
         
-        if(window.navigator.vibrate) window.navigator.vibrate(50); // Sirf 3-dot dabaane par minor vibration
+        // VIBRATION COMPLETELY REMOVED FROM EVERYWHERE!
     }
 
     function hideMsgMenu() { document.getElementById('msg-menu').style.display = 'none'; }
@@ -764,21 +762,18 @@
 
         let dynamicSystemPrompt = `You are DATEX AI. Your name is strictly 'DATEX AI'. You must never identify as Llama, Meta, or OpenAI. 
 
-CURRENT REAL-TIME DATA: Today is ${dateStr} and the current time is ${timeStr}. DO NOT mention the date or time unless the user specifically asks for it.
+CURRENT REAL-TIME DATA: Today is ${dateStr} and the current time is ${timeStr}.
 
 CRITICAL INSTRUCTIONS:
-1. BE NORMAL & NATURAL: Just talk normally like a human friend. DO NOT introduce yourself, DO NOT list your capabilities, and DO NOT mention your creator UNLESS the user explicitly asks. Directly answer the user's question.
-2. ADVANCED MATHEMATICS: You are an expert mathematician. For ANY math problem, you MUST perform calculations step-by-step internally. IF a secret System Note provides a math result for the user's query, YOU MUST TRUST IT IMPLICITLY and output that exact result as your final answer.
-3. LIVE INTERNET ACCESS: You HAVE real-time live internet access. If a user asks if you can search the web, know current news, or browse the internet, PROUDLY SAY YES.
-4. PERSONALITY: Be exactly like Google's Gemini - conversational, empathetic, friendly, and highly intelligent.
-5. IDENTITY: ONLY IF directly asked "who created you" or "who is your owner", state you were created and are owned by N.Sujal Kumar, a 16-year-old visionary from India.
-6. CODING RULE: Only provide programming code if explicitly asked.`;
+1. BE NORMAL & NATURAL: Your personality, tone, and conversational style must be an EXACT CLONE of Google's Gemini. Be conversational, empathetic, friendly, and highly intelligent.
+2. NO BRAGGING OR UNSOLICITED INFO: NEVER volunteer information about your capabilities (like coding, math, giving links, speaking 7000+ languages), your name, your creator, or the current time/date UNLESS the user explicitly and directly asks for them. Keep your answers directly focused on the user's prompt.
+3. MULTILINGUAL CAPABILITY: You understand and can converse fluently in all global languages (7000+). Always respond naturally in the language the user is speaking. NEVER state that you can speak 7000+ languages unless directly asked.
+4. ADVANCED MATHEMATICS: You are an expert mathematician. For ANY math problem, you MUST perform calculations step-by-step internally. IF a secret System Note provides a math result for the user's query, YOU MUST TRUST IT IMPLICITLY and output that exact result as your final answer.
+5. LIVE INTERNET & ANY LINK: You HAVE real-time live internet access. If a user asks for a link to ANY website, platform, video, creator, or resource on the entire internet, provide the EXACT valid URL starting with https:// so it is clickable. Format it nicely like [Website Name](https://...).
+6. IDENTITY: ONLY IF directly asked "who created you" or "who is your owner", state you were created and are owned by N.Sujal Kumar, a 16-year-old visionary from India.
+7. CODING RULE: Only provide programming code if explicitly asked.`;
 
-        // ==========================================
-        // 1. SECRET MATH ENGINE LOGIC (100% FIXED)
-        // ==========================================
         try {
-            // Remove commas from numbers so the math engine doesn't get confused (e.g., 100,000 + 20)
             const cleanMessage = message.replace(/,/g, '');
             const mathRegex = /(?:(?:\d+\.?\d*)\s*[\+\-\*\/\^\(\)]\s*)+(?:\d+\.?\d*)/g;
             const matches = cleanMessage.match(mathRegex);
@@ -788,7 +783,6 @@ CRITICAL INSTRUCTIONS:
                 let hasValidMath = false;
                 matches.forEach(match => {
                     try {
-                        // Make sure it contains an operator, not just a plain number
                         if (/[\+\-\*\/\^]/.test(match)) {
                             const result = math.evaluate(match);
                             mathContext += `${match} = ${result}\n`;
@@ -797,7 +791,6 @@ CRITICAL INSTRUCTIONS:
                     } catch(e) {}
                 });
                 
-                // Inject directly into the core system prompt to force the AI to see it
                 if (hasValidMath) {
                     dynamicSystemPrompt += `\n\n[SECRET SYSTEM NOTE]: The user asked a math calculation. The exact, 100% correct result calculated by the backend is:\n${mathContext}\nYou MUST use this exact result in your final answer. Do not try to recalculate it yourself!`;
                 }
@@ -809,10 +802,8 @@ CRITICAL INSTRUCTIONS:
             ...chatHistory[activeChatIndex].messages
         ];
 
-        // ==========================================
-        // 2. LIVE INTERNET SEARCH LOGIC (TAVILY API)
-        // ==========================================
-        const searchKeywords = ['aaj', 'today', 'news', 'khabar', 'price', 'match', 'score', 'latest', 'update', 'weather', 'mausam', 'kal', 'yesterday', 'current', 'stock', 'who won', 'kaun jeeta', 'batao', 'search'];
+        // ADDED 'url', 'site', 'browser', 'google' for FULL INTERNET FETCHING
+        const searchKeywords = ['aaj', 'today', 'news', 'khabar', 'price', 'match', 'score', 'latest', 'update', 'weather', 'mausam', 'kal', 'yesterday', 'current', 'stock', 'who won', 'kaun jeeta', 'batao', 'search', 'link', 'youtube', 'video', 'channel', 'instagram', 'linkedin', 'facebook', 'twitter', 'website', 'profile', 'account', 'url', 'site', 'browser', 'google'];
         const needsSearch = searchKeywords.some(keyword => message.toLowerCase().includes(keyword));
 
         if (needsSearch) {
@@ -830,8 +821,8 @@ CRITICAL INSTRUCTIONS:
                 });
                 const tavilyData = await tavilyRes.json();
                 if (tavilyData && tavilyData.results && tavilyData.results.length > 0) {
-                    let searchResults = tavilyData.results.map(r => r.title + ": " + r.content).join('\n');
-                    let internetContext = `System Note (Real-Time Internet Data): Here are the latest internet search results for the user's query. Use this to give an accurate, up-to-date answer:\n${searchResults}\n`;
+                    let searchResults = tavilyData.results.map(r => r.title + " (URL: " + r.url + ")\n" + r.content).join('\n\n');
+                    let internetContext = `System Note (Real-Time Internet Data): Here are the latest internet search results for the user's query. Use this to give an accurate, up-to-date answer. ALWAYS include the 'URL' provided below in your response starting with https:// so it is clickable:\n${searchResults}\n`;
                     apiMessages.push({ "role": "system", "content": internetContext });
                 }
             } catch(e) {
