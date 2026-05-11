@@ -29,7 +29,6 @@
             position: fixed; 
             top: 0;
             left: 0;
-            /* COMPLETELY DISABLED BLUE HIGHLIGHT & LONG PRESS EVERYWHERE */
             -webkit-touch-callout: none; 
             -webkit-user-select: none; 
             -moz-user-select: none; 
@@ -37,8 +36,14 @@
             user-select: none; 
         }
 
+        .bubble, pre, code {
+            -webkit-user-select: text;
+            -moz-user-select: text;
+            -ms-user-select: text;
+            user-select: text;
+        }
+
         textarea, input {
-            /* ONLY INPUT AREA IS SELECTABLE */
             -webkit-user-select: auto;
             -moz-user-select: auto;
             -ms-user-select: auto;
@@ -218,7 +223,6 @@
             cursor: pointer !important;
             pointer-events: auto !important; 
             font-weight: 600 !important;
-            /* Allow clicking links globally */
             -webkit-user-select: auto !important;
         }
         .ai-link:hover {
@@ -284,7 +288,7 @@
     </div>
 
     <script>
-    // PREVENT NATIVE LONG PRESS MENU EVERYWHERE EXCEPT TEXT AREA (100% SECURE)
+    // PREVENT NATIVE LONG PRESS MENU EVERYWHERE EXCEPT TEXT AREA
     document.addEventListener('contextmenu', function(e) {
         if (e.target.tagName !== 'TEXTAREA' && e.target.tagName !== 'INPUT') {
             e.preventDefault();
@@ -315,6 +319,15 @@
     let stopGenerationFlag = false;
     let abortController = null;
     let currentAiRow = null;
+
+    // --- SCROLL TO HIDE MENU FIX ---
+    document.getElementById('chat-container').addEventListener('scroll', () => {
+        if(document.getElementById('msg-menu').style.display === 'flex') {
+            hideMsgMenu();
+        }
+    });
+    window.addEventListener('scroll', hideMsgMenu);
+    // -------------------------------
 
     function autoGrow(element) {
         element.style.height = "44px"; 
@@ -473,13 +486,12 @@
         }
     }
 
-    // MENU TOGGLE AND PERFECT ALIGNMENT FIX
+    // PERFECT MENU POSITIONING FIX
     function openMenu(e, btn) {
         e.stopPropagation(); 
         const menu = document.getElementById('msg-menu');
         const row = btn.closest('.message-row');
         
-        // If menu is already open on this same row, clicking the button again will hide it (Toggle)
         if (menu.style.display === 'flex' && selectedMsgRow === row) {
             hideMsgMenu();
             return;
@@ -501,11 +513,18 @@
         
         const rect = btn.getBoundingClientRect();
         
-        // Pin strictly near the 3-dot button perfectly
-        let x = isUser ? (rect.right - 140) : rect.left;
-        let y = rect.bottom + 8;
+        let x;
+        if (isUser) {
+            x = rect.left - 140; 
+        } else {
+            x = rect.right + 5;  
+        }
         
-        if (y + 120 > window.innerHeight) y = rect.top - 120; 
+        let y = rect.top; 
+        
+        if (x < 10) x = 10;
+        if (x + 140 > window.innerWidth) x = window.innerWidth - 150;
+        if (y + 120 > window.innerHeight) y = window.innerHeight - 130; 
         
         menu.style.left = x + 'px';
         menu.style.top = y + 'px';
@@ -793,28 +812,31 @@ CRITICAL INSTRUCTIONS:
 6. IDENTITY: ONLY IF directly asked "who created you" or "who is your owner", state you were created and are owned by N.Sujal Kumar, a 16-year-old visionary from India.
 7. CODING RULE: Only provide programming code if explicitly asked.`;
 
-        // AGGRESSIVE MATH ENGINE FIX (GUARANTEED 100% CORRECT)
+        // FOREIGN LANGUAGE CRASH BUG FULLY FIXED HERE
         let mathContext = "";
         let hasValidMath = false;
         try {
-            const cleanMessage = message.replace(/,/g, '');
-            const mathRegex = /(?:(?:\d+\.?\d*)\s*[\+\-\*\/\^\(\)]\s*)+(?:\d+\.?\d*)/g;
-            const matches = cleanMessage.match(mathRegex);
-            
-            if (matches) {
-                matches.forEach(match => {
-                    try {
-                        if (/[\+\-\*\/\^]/.test(match)) {
-                            const result = math.evaluate(match);
-                            if(result !== undefined && !isNaN(result)) {
-                                mathContext += `${match} = ${result}\n`;
-                                hasValidMath = true;
+            // ONLY check for math if the string actually contains numbers AND operators
+            if (/[\d]\s*[\+\-\*\/\^]\s*[\d]/.test(message)) {
+                const cleanMessage = message.replace(/,/g, '');
+                const mathRegex = /(?:(?:\d+\.?\d*)\s*[\+\-\*\/\^\(\)]\s*)+(?:\d+\.?\d*)/g;
+                const matches = cleanMessage.match(mathRegex);
+                
+                if (matches) {
+                    matches.forEach(match => {
+                        try {
+                            if (/[\+\-\*\/\^]/.test(match)) {
+                                const result = math.evaluate(match);
+                                if(result !== undefined && !isNaN(result)) {
+                                    mathContext += `${match} = ${result}\n`;
+                                    hasValidMath = true;
+                                }
                             }
-                        }
-                    } catch(e) {}
-                });
+                        } catch(err) { }
+                    });
+                }
             }
-        } catch(e) {}
+        } catch(e) { }
 
         if (hasValidMath) {
             dynamicSystemPrompt += `\n\n[CRITICAL SYSTEM OVERRIDE - MATH DETECTED]: The user has provided a mathematical expression. The absolute, mathematically proven correct answer is:\n${mathContext}\nDO NOT CALCULATE THIS YOURSELF. YOUR INTERNAL CALCULATOR IS BROKEN. YOU MUST COPY AND PASTE THIS EXACT NUMBER AS YOUR FINAL ANSWER. NO EXCEPTIONS.`;
@@ -868,7 +890,6 @@ CRITICAL INSTRUCTIONS:
             
             const data = await res.json();
             
-            // ACCURATE SERVER BUSY/RATE LIMIT ERROR MESSAGE
             if (data.error || !data.choices || data.choices.length === 0) {
                 throw new Error("Server Rate Limit or API Error");
             }
@@ -885,7 +906,7 @@ CRITICAL INSTRUCTIONS:
             if (e.name === 'AbortError') {
                 bubble.innerText = "Generation stopped.";
             } else {
-                // FIXED THE ERROR TEXT TO SHOW EXACTLY WHY IT FAILS (TRAFFIC/LOAD, NOT INTERNET)
+                // FIXED THE FAKE "INTERNET CONNECTION" ERROR MESSAGE
                 bubble.innerText = "Server is currently busy or overloaded. Please try again in a few seconds."; 
             }
             resetSendButton();
