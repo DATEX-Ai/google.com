@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>DATEX Ai.com</title>
     <link rel="icon" type="image/jpeg" href="logo.jpg.jpg">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -12,15 +12,18 @@
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; -webkit-tap-highlight-color: transparent; }
         
+        /* Flexbox Lock Logic - Keyboard aane par layout hilega nahi */
         body { 
             background-color: #ffffff; 
             color: #333; 
-            height: 100vh; 
-            height: 100dvh; /* Dynamic viewport height for modern browsers */
             display: flex; 
             flex-direction: column;
+            height: 100vh; 
+            height: 100dvh; /* Mobile ke keyboard ke hisaab se height adjust karega */
             overflow: hidden; 
             width: 100%; 
+            position: fixed; 
+            inset: 0;
             -webkit-user-select: none; 
             -moz-user-select: none; 
             -ms-user-select: none; 
@@ -49,16 +52,19 @@
         .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.1); display: none; z-index: 1000; cursor: pointer; }
         .overlay.active { display: block; }
 
-        /* HEADER FIX: Header fixed above, will not move when keyboard opens */
-        header { 
+        .wrapper { 
+            flex: 1; 
             display: flex; 
-            justify-content: space-between; 
-            align-items: center; 
-            padding: 12px 20px; 
-            border-bottom: 1px solid #f9f9f9; 
-            background: #fff; 
-            flex-shrink: 0; 
-            z-index: 100; 
+            flex-direction: column; 
+            height: 100%; 
+            width: 100%; 
+            overflow: hidden; 
+        }
+        
+        /* Header Fix: Ab ye top se nahi hatega */
+        header { 
+            flex-shrink: 0; /* Keyboard aane par dabega nahi */
+            display: flex; justify-content: space-between; align-items: center; padding: 12px 20px; border-bottom: 1px solid #f9f9f9; background: #fff; z-index: 100; 
         }
         
         .menu-btn-container { width: 38px; height: 38px; border: 1.5px solid #333; border-radius: 50%; display: flex; flex-direction: column; justify-content: center; align-items: flex-start; padding-left: 9px; cursor: pointer; gap: 4px; }
@@ -70,40 +76,18 @@
         .version-pill { font-size: 10px; background: #f0f0f0; display: inline-block; padding: 2px 10px; border-radius: 12px; color: #777; border: 1px solid #ddd; }
         .logo-container img { width: 42px; height: 42px; border-radius: 50%; object-fit: cover; border: 1.5px solid #eee; }
 
-        /* MAIN CONTENT FIX: Takes available space and scrolls internally */
+        /* Main Content Fix: Sirf ye area scroll hoga */
         .main-content { 
             flex: 1; 
-            display: flex; 
-            flex-direction: column; 
-            overflow-y: auto; 
-            padding: 10px 20px 20px 20px; 
-            width: 100%; 
-            max-width: 800px; 
-            margin: 0 auto; 
-            scrollbar-width: none; 
+            display: flex; flex-direction: column; overflow-y: auto; 
+            padding: 10px 20px 15px 20px; 
+            width: 100%; max-width: 800px; margin: 0 auto; scrollbar-width: none; 
         }
         
         .welcome-screen { 
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            height: 100%;
-            flex: 1;
-            text-align: center; 
-            color: #222; 
-            font-size: 24px; 
-            font-weight: 500; 
-            line-height: 1.0; 
+            display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100%; flex: 1; text-align: center; color: #222; font-size: 24px; font-weight: 500; line-height: 1.0; 
         }
-        .welcome-screen span { 
-            display: block; 
-            font-size: 42px; 
-            letter-spacing: 4px; 
-            font-weight: 700; 
-            color: #000; 
-            margin-top: 5px; 
-        } 
+        .welcome-screen span { display: block; font-size: 42px; letter-spacing: 4px; font-weight: 700; color: #000; margin-top: 5px; } 
 
         .message-row { display: flex; width: 100%; margin: 15px 0; align-items: flex-start; gap: 12px; }
         .user-row { flex-direction: row-reverse; }
@@ -113,53 +97,17 @@
         .ai-bubble { background-color: #fff; border: 1px solid #e5e7eb; border-bottom-left-radius: 4px; width: 100%; }
         .avatar { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; border: 1px solid #eee; flex-shrink: 0; }
 
-        /* INPUT FIX: Fixed at the bottom of the flex container */
+        /* Bottom Container Fix */
         .bottom-container { 
-            width: 100%; 
-            background: #ffffff; 
-            padding: 10px 20px 20px 20px; 
-            display: flex; 
-            justify-content: center; 
-            z-index: 100;
-            flex-shrink: 0;
-            border-top: 1px solid #f9f9f9;
+            flex-shrink: 0; /* Keyboard aane par dabega nahi */
+            width: 100%; background: #ffffff; padding: 10px 20px 20px 20px; display: flex; justify-content: center; z-index: 100;
         }
         
-        .input-bar-wrapper {
-            width: 100%;
-            max-width: 720px; 
-            display: flex;
-        }
-        .input-bar { 
-            flex: 1; 
-            background: #f3f4f6; 
-            border: 1.2px solid #e5e7eb; 
-            border-radius: 35px; 
-            display: flex; 
-            align-items: flex-end; 
-            padding: 8px 12px 8px 22px; 
-            width: 100%;
-        }
+        .input-bar-wrapper { width: 100%; max-width: 720px; display: flex; }
+        .input-bar { flex: 1; background: #f3f4f6; border: 1.2px solid #e5e7eb; border-radius: 35px; display: flex; align-items: flex-end; padding: 8px 12px 8px 22px; width: 100%; }
         
-        .input-bar textarea { 
-            flex: 1; 
-            background: transparent; 
-            border: none; 
-            padding: 10px 0; 
-            font-size: 16px; 
-            outline: none; 
-            min-width: 0; 
-            color: #1a1a1a;
-            resize: none;
-            max-height: 150px; 
-            overflow-y: auto;
-            line-height: 1.4;
-            scrollbar-width: none; 
-            -ms-overflow-style: none; 
-        }
-        .input-bar textarea::-webkit-scrollbar {
-            display: none; 
-        }
+        .input-bar textarea { flex: 1; background: transparent; border: none; padding: 10px 0; font-size: 16px; outline: none; min-width: 0; color: #1a1a1a; resize: none; max-height: 150px; overflow-y: auto; line-height: 1.4; scrollbar-width: none; -ms-overflow-style: none; }
+        .input-bar textarea::-webkit-scrollbar { display: none; }
         
         #mike-btn, .send-btn { width: 44px; height: 44px; border-radius: 50%; display: flex; justify-content: center; align-items: center; cursor: pointer; border: none; flex-shrink: 0; }
         #mike-btn { font-size: 20px; color: #555; background: transparent; }
@@ -167,22 +115,7 @@
         #mike-btn.recording { background-color: #000 !important; color: #fff !important; }
         .stop-square { width: 12px; height: 12px; background: #fff; border-radius: 2px; }
 
-        pre { 
-            background: #1e1e1e; 
-            color: #d4d4d4; 
-            padding: 45px 15px 15px 15px; 
-            border-radius: 12px; 
-            margin: 15px 0; 
-            overflow-x: auto; 
-            position: relative; 
-            font-family: 'Consolas', monospace; 
-            font-size: 14px; 
-            width: 100%; 
-            max-width: 100%;
-            border: 1px solid #333;
-            white-space: pre-wrap; 
-            word-break: break-word;
-        }
+        pre { background: #1e1e1e; color: #d4d4d4; padding: 45px 15px 15px 15px; border-radius: 12px; margin: 15px 0; overflow-x: auto; position: relative; font-family: 'Consolas', monospace; font-size: 14px; width: 100%; max-width: 100%; border: 1px solid #333; white-space: pre-wrap; word-break: break-word; }
         code { font-family: 'Consolas', monospace; }
         .copy-code-btn { position: absolute; top: 10px; right: 12px; background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.2); padding: 5px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; z-index: 10; }
         
@@ -201,9 +134,7 @@
             font-weight: 600 !important;
             -webkit-user-select: auto !important;
         }
-        .ai-link:hover {
-            color: #1557b0 !important;
-        }
+        .ai-link:hover { color: #1557b0 !important; }
     </style>
 </head>
 <body onclick="hideMsgMenu()">
@@ -336,12 +267,7 @@
         chatHistory.splice(index, 1);
         localStorage.setItem('datex_full_history', JSON.stringify(chatHistory));
         renderChatList();
-        
-        if (activeChatIndex === index) {
-            createNewChat();
-        } else if (activeChatIndex > index) {
-            activeChatIndex--; 
-        }
+        if (activeChatIndex === index) { createNewChat(); } else if (activeChatIndex > index) { activeChatIndex--; }
     }
 
     function loadSelectedChat(index, shouldToggleSidebar = false) {
@@ -355,7 +281,6 @@
             else { addAiMessageToUI(msg.content, false, msgIdx); }
         });
         if(shouldToggleSidebar) toggleSidebar();
-        setTimeout(() => { container.scrollTop = container.scrollHeight; }, 50);
     }
 
     function createNewChat() {
@@ -395,8 +320,7 @@
         const bubble = row.querySelector('.ai-bubble');
         attachMsgEvents(row);
         container.appendChild(row);
-        if(isNew) { typeEffect(bubble, text, 5); } 
-        else { renderStoredContent(bubble, text); }
+        if(isNew) { typeEffect(bubble, text, 5); } else { renderStoredContent(bubble, text); }
         container.scrollTop = container.scrollHeight;
     }
 
@@ -444,11 +368,9 @@
         editingMsgIdx = parseInt(selectedMsgRow.getAttribute('data-index'));
         const userText = selectedMsgRow.querySelector('.bubble').innerText;
         const input = document.getElementById('user-input');
-        
         input.value = userText;
         autoGrow(input);
         input.focus();
-        
         hideMsgMenu();
     }
 
@@ -456,23 +378,14 @@
         if(selectedMsgRow && activeChatIndex !== -1) {
             const msgIdx = parseInt(selectedMsgRow.getAttribute('data-index'));
             const isUserRow = selectedMsgRow.classList.contains('user-row');
-
             chatHistory[activeChatIndex].messages.splice(msgIdx, 1);
-
-            if (isUserRow && 
-                chatHistory[activeChatIndex].messages[msgIdx] && 
-                chatHistory[activeChatIndex].messages[msgIdx].role === "assistant") {
+            if (isUserRow && chatHistory[activeChatIndex].messages[msgIdx] && chatHistory[activeChatIndex].messages[msgIdx].role === "assistant") {
                 chatHistory[activeChatIndex].messages.splice(msgIdx, 1);
             }
-            
             localStorage.setItem('datex_full_history', JSON.stringify(chatHistory));
             editingMsgIdx = -1; 
-            
-            if (chatHistory[activeChatIndex].messages.length === 0) {
-                deleteHistoryItem(null, activeChatIndex); 
-            } else {
-                loadSelectedChat(activeChatIndex, false); 
-            }
+            if (chatHistory[activeChatIndex].messages.length === 0) { deleteHistoryItem(null, activeChatIndex); } 
+            else { loadSelectedChat(activeChatIndex, false); }
         }
         hideMsgMenu();
     }
@@ -491,30 +404,25 @@
         });
     }
 
-    // 🌟 LINK BUG FIX: Ab history refresh karne par bhi link perfect kaam karega
     function formatLinksAndStyles(text) {
         let formatted = text;
         formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        formatted = formatted.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" class="ai-link">$1</a>');
         
-        let linksArray = [];
-        
-        // Replace markdown links securely
-        formatted = formatted.replace(/\[([^\]]+)\]\((https?:\/\/[^\)]+)\)/g, function(match, text, url) {
-            linksArray.push(`<a href="${url}" target="_blank" class="ai-link">${text}</a>`);
-            return `%%LINK${linksArray.length - 1}%%`;
+        let tempLinks = [];
+        formatted = formatted.replace(/<a[\s\S]*?<\/a>/g, function(match) {
+            tempLinks.push(match);
+            return `___A_TAG_${tempLinks.length - 1}___`;
         });
         
-        // Replace raw URLs securely
-        formatted = formatted.replace(/(https?:\/\/[^\s<]+)/g, function(match, url) {
-            linksArray.push(`<a href="${url}" target="_blank" class="ai-link">${url}</a>`);
-            return `%%LINK${linksArray.length - 1}%%`;
+        formatted = formatted.replace(/(^|\s)(https?:\/\/[^\s<()]+|www\.[^\s<()]+)/g, function(match, space, url) {
+            let fullUrl = url.startsWith('www.') ? 'https://' + url : url;
+            return space + '<a href="' + fullUrl + '" target="_blank" class="ai-link">' + url + '</a>';
         });
         
-        // Restore links back to text
-        formatted = formatted.replace(/%%LINK(\d+)%%/g, function(match, index) {
-            return linksArray[index];
+        formatted = formatted.replace(/___A_TAG_(\d+)___/g, function(match, index) {
+            return tempLinks[index];
         });
-        
         return formatted;
     }
 
@@ -534,44 +442,47 @@
         if(window.MathJax) MathJax.typesetPromise([element]);
     }
 
+    // NEW TYPE EFFECT ENGINE (Solves the blue link issue)
     function typeEffect(element, text, speed) {
-        let i = 0;
         let segments = text.split(/(```[\s\S]*?```)/g);
         let currentSeg = 0;
+        let fullHTML = "";
+        let i = 0;
 
         function typeNext() {
             if (currentSeg < segments.length) {
                 let seg = segments[currentSeg];
                 if (seg.startsWith("```") && seg.endsWith("```")) {
                     let codeContent = seg.substring(3, seg.length - 3).trim();
-                    element.innerHTML += `<pre><button class="copy-code-btn" onclick="copyCode(this)">Copy</button><code>${escapeHTML(codeContent)}</code></pre>`;
+                    fullHTML += `<pre><button class="copy-code-btn" onclick="copyCode(this)">Copy</button><code>${escapeHTML(codeContent)}</code></pre>`;
+                    element.innerHTML = fullHTML;
                     currentSeg++;
                     setTimeout(typeNext, speed);
                 } else {
                     let formattedSeg = formatLinksAndStyles(seg);
-                    
                     if (i < formattedSeg.length) {
                         if (formattedSeg.charAt(i) === '<') {
                             let tagEnd = formattedSeg.indexOf('>', i);
                             if (tagEnd !== -1) {
-                                element.innerHTML += formattedSeg.substring(i, tagEnd + 1);
                                 i = tagEnd + 1;
                             } else {
-                                element.innerHTML += '&lt;';
                                 i++;
                             }
                         } else {
-                            element.innerHTML += (formattedSeg.charAt(i) === '\n') ? "<br>" : formattedSeg.charAt(i);
                             i++;
                         }
+                        
+                        let currentText = formattedSeg.substring(0, i);
+                        element.innerHTML = fullHTML + currentText.replace(/\n/g, "<br>");
+                        document.getElementById('chat-container').scrollTop = document.getElementById('chat-container').scrollHeight;
                         setTimeout(typeNext, speed);
                     } else {
+                        fullHTML += formattedSeg.replace(/\n/g, "<br>");
                         i = 0;
                         currentSeg++;
                         setTimeout(typeNext, speed);
                     }
                 }
-                document.getElementById('chat-container').scrollTop = document.getElementById('chat-container').scrollHeight;
             } else if(window.MathJax) { 
                 MathJax.typesetPromise([element]); 
             }
@@ -625,7 +536,8 @@ CRITICAL RULES:
 1. EXTREME INTELLIGENCE & MATH: You possess immense, maximum knowledge about the world, history, and science. For ANY math or logic problem, ALWAYS think step-by-step internally and double-check your calculations before giving the final answer to ensure 100% accuracy.
 2. NO RANDOM CODE: DO NOT output markdown code blocks (\`\`\`) UNLESS the user explicitly asks you to write code, scripts, or programming. Provide normal, natural text responses otherwise.
 3. LINKS: ALWAYS format links as valid Markdown [Link Text](https://www.example.com).
-4. IDENTITY: Do not start conversations by listing your name, creator, or capabilities. If asked who created you, your owner, CEO, founder, or co-founder, proudly state you were created and are owned by N.Sujal Kumar, a 16-year-old visionary from India.
+4. NO FAKE LINKS: If the user asks for a specific YouTube video link or URL that you do NOT know the exact, real address for, DO NOT hallucinate or make one up. Clearly apologize and state that you do not have live internet browsing to fetch the current link.
+5. IDENTITY: Do not start conversations by listing your name, creator, or capabilities. If asked who created you, your owner, CEO, founder, or co-founder, proudly state you were created and are owned by N.Sujal Kumar, a 16-year-old visionary from India.
 
 Your communication style must be exactly like Google's Gemini - extremely conversational, friendly, and helpful. Balance empathy with candor.`;
 
