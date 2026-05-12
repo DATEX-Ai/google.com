@@ -606,22 +606,30 @@
     function triggerGallery() { document.getElementById('gallery-input').click(); toggleAttachmentMenu(); }
     function triggerFiles() { document.getElementById('file-input').click(); toggleAttachmentMenu(); }
 
+    // --- FIX 1: SYNCHRONOUS 10-LIMIT LOGIC FOR MIXED FILES ---
     function handleFileSelect(event) {
         const files = event.target.files;
         if(!files || files.length === 0) return;
 
         let limitReached = false;
+        let availableSlots = 10 - currentAttachments.length;
 
-        for (let i = 0; i < files.length; i++) {
-            if (currentAttachments.length >= 10) {
-                limitReached = true;
-                break;
-            }
+        if (availableSlots <= 0) {
+            showToast("Select up to 10 items");
+            event.target.value = '';
+            return;
+        }
 
-            const file = files[i];
+        // Only process the files that fit into the 10 limit
+        let filesToProcess = Array.from(files).slice(0, availableSlots);
+        if (files.length > availableSlots) {
+            limitReached = true;
+        }
+
+        filesToProcess.forEach(file => {
             if (file.type.startsWith('video/')) {
                 showToast("Videos are not allowed!");
-                continue;
+                return;
             }
 
             const reader = new FileReader();
@@ -631,16 +639,31 @@
                     img.onload = function() {
                         const canvas = document.createElement('canvas');
                         
-                        // FIX: 100% ORIGINAL HEIGHT AND WIDTH RETAINED!
-                        canvas.width = img.width;
-                        canvas.height = img.height;
-                        const ctx = canvas.getContext('2d');
-                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                        
-                        // ONLY COMPRESSING THE FILE SIZE (JPEG QUALITY 50%)
-                        const compressedBase64 = canvas.toDataURL('image/jpeg', 0.5); 
+                        // Gemini's Proportional Logic
+                        const MAX_DIMENSION = 800;
+                        let width = img.width;
+                        let height = img.height;
 
-                        currentAttachments.push({ type: 'image', name: file.name, data: compressedBase64 });
+                        if (width > height) {
+                            if (width > MAX_DIMENSION) {
+                                height *= MAX_DIMENSION / width;
+                                width = MAX_DIMENSION;
+                            }
+                        } else {
+                            if (height > MAX_DIMENSION) {
+                                width *= MAX_DIMENSION / height;
+                                height = MAX_DIMENSION;
+                            }
+                        }
+
+                        canvas.width = width;
+                        canvas.height = height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, width, height);
+                        
+                        const optimizedBase64 = canvas.toDataURL('image/jpeg', 0.7); 
+
+                        currentAttachments.push({ type: 'image', name: file.name, data: optimizedBase64 });
                         renderAttachmentPreview();
                     }
                     img.src = e.target.result;
@@ -650,7 +673,7 @@
                 }
             }
             reader.readAsDataURL(file);
-        }
+        });
         
         if (limitReached) {
             showToast("Select up to 10 items");
@@ -658,6 +681,7 @@
         
         event.target.value = '';
     }
+    // ---------------------------------------------------------
 
     function renderAttachmentPreview() {
         const container = document.getElementById('attachment-preview-container');
@@ -694,6 +718,53 @@
         element.style.height = "44px"; 
         if (element.scrollHeight > 44) element.style.height = (element.scrollHeight) + "px";
     }
+
+    // --- FIX 2: VOICE RECOGNITION (MIC) RESTORED ---
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    let recognition;
+    if (SpeechRecognition) {
+        recognition = new SpeechRecognition();
+        recognition.interimResults = false; 
+        recognition.continuous = true;
+        recognition.onstart = () => { 
+            isRecording = true; 
+            sessionFinalText = document.getElementById('user-input').value; 
+            if (sessionFinalText.length > 0 && !sessionFinalText.endsWith(" ")) { sessionFinalText += " "; } 
+            const btn = document.getElementById('mike-btn'); 
+            btn.classList.add('recording'); 
+            btn.innerHTML = '<i class="fas fa-microphone"></i>'; 
+        };
+        recognition.onend = () => { 
+            isRecording = false; 
+            const btn = document.getElementById('mike-btn'); 
+            btn.classList.remove('recording'); 
+            btn.innerHTML = '<i class="fas fa-microphone"></i>'; 
+        };
+        recognition.onresult = (e) => { 
+            let interimTranscript = ""; 
+            for (let i = e.resultIndex; i < e.results.length; ++i) { 
+                if (e.results[i].isFinal) { sessionFinalText += e.results[i][0].transcript; } 
+                else { interimTranscript += e.results[i][0].transcript; } 
+            } 
+            const input = document.getElementById('user-input'); 
+            input.value = sessionFinalText + interimTranscript; 
+            autoGrow(input); 
+        };
+    }
+
+    document.getElementById('mike-btn').onclick = () => {
+        if (!recognition) {
+            showToast("Voice typing is not supported in your browser.");
+            return;
+        }
+        if (isRecording) { recognition.stop(); } else { recognition.start(); }
+    };
+    // ------------------------------------------------
+
+    window.onload = () => { 
+        renderChatList(); 
+        if(chatHistory.length === 0) createNewChat();
+    };
 
     function renderChatList() {
         const listElement = document.getElementById('chat-list');
@@ -756,19 +827,24 @@
         const row = document.createElement('div');
         row.className = 'message-row user-row';
         row.setAttribute('data-index', msgIdx); 
+        
         let attachmentHTML = '';
         if (attachments && attachments.length > 0) {
             attachmentHTML = `<div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px;">`;
             attachments.forEach(att => {
                 if (att.type === 'image') {
-                    // FIX: ASPECT RATIO MAINTAINED IN CHAT BUBBLE
-                    attachmentHTML += `<img src="${att.data}" style="height: 80px; width: auto; max-width: 100%; border-radius: 8px; object-fit: contain;">`;
+                    if (attachments.length === 1) {
+                        attachmentHTML += `<img src="${att.data}" style="max-width: 100%; max-height: 250px; border-radius: 12px; object-fit: contain; background: #fff;">`;
+                    } else {
+                        attachmentHTML += `<img src="${att.data}" style="width: 100px; height: 100px; border-radius: 8px; object-fit: cover;">`;
+                    }
                 } else {
                     attachmentHTML += `<div style="display: flex; align-items: center; gap: 6px; background: #e5e7eb; padding: 6px 10px; border-radius: 12px;"><i class="fas fa-file-pdf" style="color: #1a73e8; font-size: 18px;"></i><span style="font-size: 11px; font-weight: 500; color:#333; max-width: 80px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${att.name}</span></div>`;
                 }
             });
             attachmentHTML += `</div>`;
         }
+        
         let cleanText = cleanOldTags(text);
         row.innerHTML = `<div class="bubble-container"><div class="bubble user-bubble" style="display: flex; flex-direction: column;">${attachmentHTML}${cleanText ? `<span>${cleanText}</span>` : ''}</div><div class="action-bar user-action-bar"><button class="action-btn" onclick="openMenu(event, this)"><i class="fas fa-ellipsis-v"></i></button></div></div>`;
         container.appendChild(row);
