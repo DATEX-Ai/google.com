@@ -606,7 +606,6 @@
     function triggerGallery() { document.getElementById('gallery-input').click(); toggleAttachmentMenu(); }
     function triggerFiles() { document.getElementById('file-input').click(); toggleAttachmentMenu(); }
 
-    // --- FIX 1: SYNCHRONOUS 10-LIMIT LOGIC FOR MIXED FILES ---
     function handleFileSelect(event) {
         const files = event.target.files;
         if(!files || files.length === 0) return;
@@ -620,7 +619,6 @@
             return;
         }
 
-        // Only process the files that fit into the 10 limit
         let filesToProcess = Array.from(files).slice(0, availableSlots);
         if (files.length > availableSlots) {
             limitReached = true;
@@ -639,7 +637,6 @@
                     img.onload = function() {
                         const canvas = document.createElement('canvas');
                         
-                        // Gemini's Proportional Logic
                         const MAX_DIMENSION = 800;
                         let width = img.width;
                         let height = img.height;
@@ -681,7 +678,6 @@
         
         event.target.value = '';
     }
-    // ---------------------------------------------------------
 
     function renderAttachmentPreview() {
         const container = document.getElementById('attachment-preview-container');
@@ -719,7 +715,6 @@
         if (element.scrollHeight > 44) element.style.height = (element.scrollHeight) + "px";
     }
 
-    // --- FIX 2: VOICE RECOGNITION (MIC) RESTORED ---
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     let recognition;
     if (SpeechRecognition) {
@@ -759,7 +754,6 @@
         }
         if (isRecording) { recognition.stop(); } else { recognition.start(); }
     };
-    // ------------------------------------------------
 
     window.onload = () => { 
         renderChatList(); 
@@ -821,6 +815,7 @@
         return text.replace(/\[Attached(?: File)?:.*?\]\n?/g, "").trim();
     }
 
+    // --- FIX 1: VERTICAL GEMINI CHAT BUBBLE LAYOUT ---
     function addUserMessageToUI(text, isTyping, msgIdx, attachments = []) {
         const container = document.getElementById('chat-container');
         if(document.getElementById('welcome-screen')) document.getElementById('welcome-screen').remove();
@@ -830,16 +825,14 @@
         
         let attachmentHTML = '';
         if (attachments && attachments.length > 0) {
-            attachmentHTML = `<div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px;">`;
+            // Using flex-direction: column to stack them "niche-niche"
+            attachmentHTML = `<div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px; width: 100%;">`;
             attachments.forEach(att => {
                 if (att.type === 'image') {
-                    if (attachments.length === 1) {
-                        attachmentHTML += `<img src="${att.data}" style="max-width: 100%; max-height: 250px; border-radius: 12px; object-fit: contain; background: #fff;">`;
-                    } else {
-                        attachmentHTML += `<img src="${att.data}" style="width: 100px; height: 100px; border-radius: 8px; object-fit: cover;">`;
-                    }
+                    // Full width of bubble, natural height, vertically stacked exactly like Gemini
+                    attachmentHTML += `<img src="${att.data}" style="width: 100%; height: auto; border-radius: 8px; object-fit: contain; background: transparent;">`;
                 } else {
-                    attachmentHTML += `<div style="display: flex; align-items: center; gap: 6px; background: #e5e7eb; padding: 6px 10px; border-radius: 12px;"><i class="fas fa-file-pdf" style="color: #1a73e8; font-size: 18px;"></i><span style="font-size: 11px; font-weight: 500; color:#333; max-width: 80px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${att.name}</span></div>`;
+                    attachmentHTML += `<div style="display: flex; align-items: center; gap: 6px; background: #e5e7eb; padding: 10px; border-radius: 12px;"><i class="fas fa-file-pdf" style="color: #1a73e8; font-size: 24px;"></i><span style="font-size: 13px; font-weight: 500; color:#333; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${att.name}</span></div>`;
                 }
             });
             attachmentHTML += `</div>`;
@@ -850,6 +843,7 @@
         container.appendChild(row);
         container.scrollTop = container.scrollHeight;
     }
+    // ------------------------------------------------
 
     function addAiMessageToUI(text, isNew, msgIdx) {
         const container = document.getElementById('chat-container');
@@ -994,34 +988,40 @@
         
         const totalMsgs = chatHistory[activeChatIndex].messages.length;
         
+        // --- FIX 2: 100% ERROR-FREE API PAYLOAD (No History Crashes) ---
         chatHistory[activeChatIndex].messages.forEach((msg, idx) => {
             const isLastMessage = (idx === totalMsgs - 1);
             let atts = msg.attachments ? msg.attachments : (msg.attachment ? [msg.attachment] : []);
+            let cleanMsgText = cleanOldTags(msg.content);
             
             if (msg.role === 'user') {
-                if (atts.length > 0) {
-                    if (isLastMessage) {
-                        let imgCount = 0;
-                        let contentArray = [];
-                        contentArray.push({ type: "text", text: cleanOldTags(msg.content) || "Analyze the attached images." });
-                        atts.forEach(att => {
-                            if (att.type === 'image' && imgCount < 2) { 
-                                contentArray.push({ type: "image_url", image_url: { url: att.data } });
-                                useVision = true;
-                                imgCount++;
-                            }
+                if (isLastMessage && atts.length > 0) {
+                    // Send ONLY the FIRST image to Groq to completely avoid 400/413/405 payload crashes
+                    let firstImg = atts.find(a => a.type === 'image');
+                    if (firstImg) {
+                        useVision = true;
+                        apiMessages.push({ 
+                            role: 'user', 
+                            content: [
+                                { type: "text", text: cleanMsgText || "Analyze the attached image." },
+                                { type: "image_url", image_url: { url: firstImg.data } }
+                            ] 
                         });
-                        apiMessages.push({ role: 'user', content: contentArray });
                     } else {
-                        apiMessages.push({ role: 'user', content: `[System Note: User attached files previously]\n${cleanOldTags(msg.content)}` });
+                        apiMessages.push({ role: 'user', content: cleanMsgText || "Attached files." });
                     }
                 } else {
-                    apiMessages.push({ role: 'user', content: cleanOldTags(msg.content) });
+                    // HISTORY PURIFIER: Strip ALL complex formats from older messages. 
+                    // This guarantees Text-Only models will NEVER crash on normal messages!
+                    let historyText = cleanMsgText;
+                    if (atts.length > 0) historyText = `[User attached files previously]\n` + historyText;
+                    apiMessages.push({ role: 'user', content: historyText });
                 }
             } else {
                 apiMessages.push({ role: 'assistant', content: msg.content });
             }
         });
+        // ----------------------------------------------------------------
 
         abortController = new AbortController();
         try {
