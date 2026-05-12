@@ -627,7 +627,8 @@
         }, 300);
     });
 
-    const GROQ_API_KEY = "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"; 
+    // FRESH GROQ API KEY INJECTED
+    const GROQ_API_KEY = "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"; 
     const TAVILY_API_KEY = "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"; 
 
     let isNewSession = true;
@@ -690,29 +691,13 @@
                     img.onload = function() {
                         const canvas = document.createElement('canvas');
                         
-                        // Smart Scaling (Max 800px) to prevent payload crash
-                        const MAX_DIMENSION = 800;
-                        let width = img.width;
-                        let height = img.height;
-
-                        if (width > height) {
-                            if (width > MAX_DIMENSION) {
-                                height *= MAX_DIMENSION / width;
-                                width = MAX_DIMENSION;
-                            }
-                        } else {
-                            if (height > MAX_DIMENSION) {
-                                width *= MAX_DIMENSION / height;
-                                height = MAX_DIMENSION;
-                            }
-                        }
-
-                        canvas.width = width;
-                        canvas.height = height;
+                        // Smart compression (Original Dimensions)
+                        canvas.width = img.width;
+                        canvas.height = img.height;
                         const ctx = canvas.getContext('2d');
-                        ctx.drawImage(img, 0, 0, width, height);
+                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
                         
-                        const optimizedBase64 = canvas.toDataURL('image/jpeg', 0.7); 
+                        const optimizedBase64 = canvas.toDataURL('image/jpeg', 0.5); 
 
                         currentAttachments.push({ type: 'image', name: file.name, data: optimizedBase64 });
                         renderAttachmentPreview();
@@ -1076,7 +1061,7 @@
             }
         });
 
-        // --- NEW LLAMA 4 SCOUT MODEL FIX ---
+        // --- FIX: EXACT LATEST MODEL INJECTED ---
         const selectedModel = useVision ? "meta-llama/llama-4-scout-17b-16e-instruct" : "llama-3.3-70b-versatile";
 
         abortController = new AbortController();
