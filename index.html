@@ -627,7 +627,7 @@
         }, 300);
     });
 
-    // FRESH GROQ API KEY INJECTED
+    // NEW FRESH GROQ API KEY INJECTED
     const GROQ_API_KEY = "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"; 
     const TAVILY_API_KEY = "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"; 
 
@@ -691,13 +691,29 @@
                     img.onload = function() {
                         const canvas = document.createElement('canvas');
                         
-                        // Smart compression (Original Dimensions)
-                        canvas.width = img.width;
-                        canvas.height = img.height;
+                        // FIX: PROPORTIONAL SCALING TO PREVENT 4MB PAYLOAD CRASH (THE REAL CULPRIT)
+                        const MAX_DIMENSION = 1024;
+                        let width = img.width;
+                        let height = img.height;
+
+                        if (width > height) {
+                            if (width > MAX_DIMENSION) {
+                                height *= MAX_DIMENSION / width;
+                                width = MAX_DIMENSION;
+                            }
+                        } else {
+                            if (height > MAX_DIMENSION) {
+                                width *= MAX_DIMENSION / height;
+                                height = MAX_DIMENSION;
+                            }
+                        }
+
+                        canvas.width = width;
+                        canvas.height = height;
                         const ctx = canvas.getContext('2d');
-                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                        ctx.drawImage(img, 0, 0, width, height);
                         
-                        const optimizedBase64 = canvas.toDataURL('image/jpeg', 0.5); 
+                        const optimizedBase64 = canvas.toDataURL('image/jpeg', 0.7); 
 
                         currentAttachments.push({ type: 'image', name: file.name, data: optimizedBase64 });
                         renderAttachmentPreview();
@@ -866,6 +882,7 @@
                 
                 let attHtml = '';
                 if (att.type === 'image') {
+                    // FIX: BUBBLE UI LARGE SIZE, VERTICAL STACK (Gemini Style)
                     attHtml = `<img src="${att.data}" onclick="openLightbox(this.src)" style="width: 100%; max-width: 250px; border-radius: 12px; object-fit: contain; background: transparent; cursor: pointer; display: block;">`;
                 } else {
                     attHtml = `<div style="display: flex; align-items: center; gap: 6px;"><i class="fas fa-file-pdf" style="color: #1a73e8; font-size: 24px;"></i><span style="font-size: 13px; font-weight: 500; color:#333; max-width: 150px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${att.name}</span></div>`;
@@ -1044,6 +1061,7 @@
                     else contentArray.push({ type: "text", text: "Analyze the attached images." });
                     
                     atts.forEach(att => {
+                        // Max 5 images per API request to prevent overload
                         if (att.type === 'image' && imgCount < 5) { 
                             contentArray.push({ type: "image_url", image_url: { url: att.data } });
                             useVision = true;
@@ -1061,7 +1079,6 @@
             }
         });
 
-        // --- FIX: EXACT LATEST MODEL INJECTED ---
         const selectedModel = useVision ? "meta-llama/llama-4-scout-17b-16e-instruct" : "llama-3.3-70b-versatile";
 
         abortController = new AbortController();
