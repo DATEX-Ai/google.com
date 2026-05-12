@@ -477,7 +477,6 @@
     </div>
 
     <script>
-    // --- NEW: INDEXED DB ENGINE ---
     const dbName = "DATEX_AI_DB";
     const storeName = "ChatHistory";
     let db;
@@ -518,7 +517,6 @@
         renderChatList();
         if(chatHistory.length === 0) createNewChat();
     }
-    // ------------------------------
 
     document.addEventListener('contextmenu', function(e) {
         if (e.target.tagName !== 'TEXTAREA' && e.target.tagName !== 'INPUT') {
@@ -567,7 +565,6 @@
             }
             const reader = new FileReader();
             reader.onload = function(e) {
-                // NO COMPRESSION - ORIGINAL QUALITY BASE64
                 currentAttachmentData = { type: file.type.startsWith('image/') ? 'image' : 'file', name: file.name, data: e.target.result };
                 const previewContainer = document.getElementById('attachment-preview');
                 const imgPreview = document.getElementById('attachment-img-preview');
@@ -803,11 +800,33 @@
                 method: 'POST', headers: { 'Authorization': `Bearer ${GROQ_API_KEY}`, 'Content-Type': 'application/json' }, signal: abortController.signal,
                 body: JSON.stringify({ "messages": apiMessages, "model": useVision ? "llama-3.2-11b-vision-preview" : "llama-3.3-70b-versatile", "max_tokens": 4096 })
             });
+            
+            // --- MODIFIED ERROR HANDLING BLOCK ---
+            if (!res.ok) {
+                let errMsg = `Server Error ${res.status}`;
+                try {
+                    const errData = await res.json();
+                    errMsg = errData.error?.message || errMsg;
+                } catch(e) {
+                    // API overload HTML block catcher
+                    errMsg = `API is currently overloaded or unavailable (Status ${res.status}). Please try again in a few seconds.`;
+                }
+                throw new Error(errMsg);
+            }
+            // ------------------------------------
+
             const data = await res.json();
             const aiResponse = data.choices[0].message.content;
             chatHistory[activeChatIndex].messages.push({ role: "assistant", content: aiResponse });
             saveHistoryToDB(); aiRow.querySelector('.ai-bubble').innerHTML = ""; typeEffect(aiRow.querySelector('.ai-bubble'), aiResponse, 5);
-        } catch (e) { aiRow.querySelector('.ai-bubble').innerText = "Error: " + e.message; resetSendButton(); }
+        } catch (e) { 
+            if (e.name === 'AbortError') {
+                aiRow.querySelector('.ai-bubble').innerText = "Generation stopped.";
+            } else {
+                aiRow.querySelector('.ai-bubble').innerText = e.message; 
+            }
+            resetSendButton(); addAiActions(currentAiRow, true);
+        }
     }
     </script>
 </body>
