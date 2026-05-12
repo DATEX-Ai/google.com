@@ -159,27 +159,32 @@
             overflow: hidden;
         }
 
-        .attachment-preview {
+        /* --- NEW MULTI-ATTACHMENT CSS --- */
+        .attachment-preview-container {
             display: none;
+            flex-wrap: wrap;
+            gap: 10px;
+            padding: 12px 20px 0 20px;
+        }
+        .attachment-chip {
             position: relative;
-            margin: 12px 0 0 20px; 
-            width: 72px;
-            height: 72px;
+            width: 65px;
+            height: 65px;
             border-radius: 12px;
             background: #e5e7eb;
             border: 1px solid #ddd;
+            display: flex;
             align-items: center;
             justify-content: center;
             flex-shrink: 0;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
         }
-        .attachment-preview img {
+        .attachment-chip img {
             width: 100%;
             height: 100%;
             object-fit: cover;
             border-radius: 11px;
         }
-        .attachment-preview .remove-btn {
+        .attachment-chip .remove-btn {
             position: absolute;
             top: -6px;
             right: -6px;
@@ -197,21 +202,7 @@
             z-index: 10;
             box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         }
-        .file-icon-placeholder {
-            font-size: 28px;
-            color: #1a73e8;
-        }
-        .file-name-placeholder {
-            font-size: 10px;
-            color: #555;
-            margin-top: 6px;
-            max-width: 60px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-            font-weight: 500;
-            text-align: center;
-        }
+        /* -------------------------------- */
 
         .input-bar { 
             background: transparent; 
@@ -422,8 +413,8 @@
     </div>
 
     <input type="file" id="camera-input" class="hidden-input" accept="image/*" capture onchange="handleFileSelect(event)">
-    <input type="file" id="gallery-input" class="hidden-input" accept="image/*" onchange="handleFileSelect(event)">
-    <input type="file" id="file-input" class="hidden-input" accept=".pdf,.doc,.docx,.txt" onchange="handleFileSelect(event)">
+    <input type="file" id="gallery-input" class="hidden-input" accept="image/*" multiple onchange="handleFileSelect(event)">
+    <input type="file" id="file-input" class="hidden-input" accept=".pdf,.doc,.docx,.txt" multiple onchange="handleFileSelect(event)">
 
     <div class="sidebar" id="sidebar">
         <div class="sidebar-content">
@@ -453,14 +444,9 @@
         <div class="bottom-container">
             <div class="input-bar-wrapper">
                 <div class="chat-input-container">
-                    <div id="attachment-preview" class="attachment-preview">
-                        <img id="attachment-img-preview" src="">
-                        <div id="attachment-file-preview" style="display: none; flex-direction: column; align-items: center; justify-content: center; height: 100%; width: 100%;">
-                            <i id="attachment-icon" class="fas fa-file-alt file-icon-placeholder"></i>
-                            <span id="attachment-name" class="file-name-placeholder"></span>
-                        </div>
-                        <div class="remove-btn" onclick="removeAttachment()"><i class="fas fa-times"></i></div>
-                    </div>
+                    
+                    <div id="attachment-preview-container" class="attachment-preview-container"></div>
+
                     <div class="input-bar">
                         <div style="height: 44px; display: flex; align-items: center; margin-right: 12px;">
                             <i class="fas fa-plus" onclick="toggleAttachmentMenu(event)" style="color:#777; cursor:pointer; font-size: 18px;"></i>
@@ -524,7 +510,6 @@
         }
     });
 
-    // --- FIX: FLAWLESS KEYBOARD AUTO-SCROLL (Green Arrows Fix) ---
     if (window.visualViewport) {
         const resizeHandler = () => {
             document.body.style.height = window.visualViewport.height + 'px';
@@ -544,7 +529,6 @@
             container.scrollTop = container.scrollHeight;
         }, 300);
     });
-    // -----------------------------------------------------------
 
     const GROQ_API_KEY = "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"; 
     const TAVILY_API_KEY = "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"; 
@@ -559,7 +543,9 @@
     let stopGenerationFlag = false;
     let abortController = null;
     let currentAiRow = null;
-    let currentAttachmentData = null;
+    
+    // NEW: ARRAY TO HOLD UP TO 10 FILES
+    let currentAttachments = [];
 
     document.getElementById('chat-container').addEventListener('scroll', () => {
         if(document.getElementById('msg-menu').style.display === 'flex') hideMsgMenu();
@@ -577,42 +563,82 @@
     function triggerGallery() { document.getElementById('gallery-input').click(); toggleAttachmentMenu(); }
     function triggerFiles() { document.getElementById('file-input').click(); toggleAttachmentMenu(); }
 
+    // --- MASTER FIX: REVERTED COMPRESSION & ALLOW 10 FILES ---
     function handleFileSelect(event) {
-        const file = event.target.files[0];
-        if(file) {
+        const files = event.target.files;
+        if(!files || files.length === 0) return;
+
+        for (let i = 0; i < files.length; i++) {
+            if (currentAttachments.length >= 10) {
+                alert("Maximum 10 files allowed!");
+                break;
+            }
+
+            const file = files[i];
             if (file.type.startsWith('video/')) {
                 alert("Videos are not allowed!");
-                event.target.value = '';
-                return;
+                continue;
             }
+
             const reader = new FileReader();
             reader.onload = function(e) {
-                // As requested, 100% Original Quality (No canvas compression here)
-                currentAttachmentData = { type: file.type.startsWith('image/') ? 'image' : 'file', name: file.name, data: e.target.result };
-                const previewContainer = document.getElementById('attachment-preview');
-                const imgPreview = document.getElementById('attachment-img-preview');
-                const filePreview = document.getElementById('attachment-file-preview');
-
                 if (file.type.startsWith('image/')) {
-                    imgPreview.src = e.target.result;
-                    imgPreview.style.display = 'block';
-                    filePreview.style.display = 'none';
+                    // COMPRESSION RESTORED to prevent 405/413 crashes!
+                    const img = new Image();
+                    img.onload = function() {
+                        const canvas = document.createElement('canvas');
+                        const MAX_WIDTH = 1000; // Good HD quality
+                        const scaleSize = Math.min(1, MAX_WIDTH / img.width);
+                        canvas.width = img.width * scaleSize;
+                        canvas.height = img.height * scaleSize;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                        const compressedBase64 = canvas.toDataURL('image/jpeg', 0.8);
+
+                        currentAttachments.push({ type: 'image', name: file.name, data: compressedBase64 });
+                        renderAttachmentPreview();
+                    }
+                    img.src = e.target.result;
                 } else {
-                    imgPreview.style.display = 'none';
-                    filePreview.style.display = 'flex';
-                    document.getElementById('attachment-name').innerText = file.name.substring(0, 10) + "...";
+                    currentAttachments.push({ type: 'file', name: file.name, data: null });
+                    renderAttachmentPreview();
                 }
-                previewContainer.style.display = 'flex';
             }
             reader.readAsDataURL(file);
         }
         event.target.value = '';
     }
 
-    function removeAttachment() {
-        currentAttachmentData = null;
-        document.getElementById('attachment-preview').style.display = 'none';
+    function renderAttachmentPreview() {
+        const container = document.getElementById('attachment-preview-container');
+        container.innerHTML = '';
+        if (currentAttachments.length === 0) {
+            container.style.display = 'none';
+            return;
+        }
+        container.style.display = 'flex';
+        currentAttachments.forEach((att, index) => {
+            const chip = document.createElement('div');
+            chip.className = 'attachment-chip';
+            const removeBtn = document.createElement('div');
+            removeBtn.className = 'remove-btn';
+            removeBtn.innerHTML = '<i class="fas fa-times"></i>';
+            removeBtn.onclick = () => removeAttachment(index);
+            if (att.type === 'image') {
+                chip.innerHTML = `<img src="${att.data}">`;
+            } else {
+                chip.innerHTML = `<div style="display:flex; flex-direction:column; align-items:center;"><i class="fas fa-file-alt" style="font-size:24px; color:#1a73e8;"></i><span style="font-size:9px; margin-top:4px; max-width:55px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${att.name}</span></div>`;
+            }
+            chip.appendChild(removeBtn);
+            container.appendChild(chip);
+        });
     }
+
+    function removeAttachment(index) {
+        currentAttachments.splice(index, 1);
+        renderAttachmentPreview();
+    }
+    // --------------------------------------------------------
 
     function autoGrow(element) {
         element.style.height = "44px"; 
@@ -646,7 +672,9 @@
         const container = document.getElementById('chat-container');
         container.innerHTML = "";
         chatHistory[index].messages.forEach((msg, msgIdx) => {
-            if(msg.role === "user") addUserMessageToUI(msg.content, false, msgIdx, msg.attachment);
+            // Support backwards compatibility for single attachments
+            let atts = msg.attachments ? msg.attachments : (msg.attachment ? [msg.attachment] : []);
+            if(msg.role === "user") addUserMessageToUI(msg.content, false, msgIdx, atts);
             else addAiMessageToUI(msg.content, false, msgIdx);
         });
         if(shouldToggleSidebar) toggleSidebar();
@@ -668,29 +696,36 @@
         document.getElementById('overlay').classList.toggle('active');
     }
 
-    // --- FIX: NO MORE UGLY [Attached:...] TAGS ---
     function cleanOldTags(text) {
         if(!text) return "";
         return text.replace(/\[Attached(?: File)?:.*?\]\n?/g, "").trim();
     }
-    // ---------------------------------------------
 
-    function addUserMessageToUI(text, isTyping, msgIdx, attachment = null) {
+    // --- SUPPORT FOR RENDERING MULTIPLE ATTACHMENTS IN CHAT ---
+    function addUserMessageToUI(text, isTyping, msgIdx, attachments = []) {
         const container = document.getElementById('chat-container');
         if(document.getElementById('welcome-screen')) document.getElementById('welcome-screen').remove();
         const row = document.createElement('div');
         row.className = 'message-row user-row';
         row.setAttribute('data-index', msgIdx); 
         let attachmentHTML = '';
-        if (attachment) {
-            if (attachment.type === 'image') attachmentHTML = `<img src="${attachment.data}" style="width: 100%; max-width: 250px; border-radius: 12px; margin-bottom: 8px;">`;
-            else attachmentHTML = `<div style="display: flex; align-items: center; gap: 10px; background: #e5e7eb; padding: 10px 14px; border-radius: 12px; margin-bottom: 8px;"><i class="fas fa-file-pdf" style="color: #1a73e8; font-size: 24px;"></i><span style="font-size: 13px; font-weight: 500;">${attachment.name}</span></div>`;
+        if (attachments && attachments.length > 0) {
+            attachmentHTML = `<div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px;">`;
+            attachments.forEach(att => {
+                if (att.type === 'image') {
+                    attachmentHTML += `<img src="${att.data}" style="width: 80px; height: 80px; border-radius: 12px; object-fit: cover;">`;
+                } else {
+                    attachmentHTML += `<div style="display: flex; align-items: center; gap: 6px; background: #e5e7eb; padding: 6px 10px; border-radius: 12px;"><i class="fas fa-file-pdf" style="color: #1a73e8; font-size: 18px;"></i><span style="font-size: 11px; font-weight: 500; color:#333; max-width: 80px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${att.name}</span></div>`;
+                }
+            });
+            attachmentHTML += `</div>`;
         }
         let cleanText = cleanOldTags(text);
         row.innerHTML = `<div class="bubble-container"><div class="bubble user-bubble" style="display: flex; flex-direction: column;">${attachmentHTML}${cleanText ? `<span>${cleanText}</span>` : ''}</div><div class="action-bar user-action-bar"><button class="action-btn" onclick="openMenu(event, this)"><i class="fas fa-ellipsis-v"></i></button></div></div>`;
         container.appendChild(row);
         container.scrollTop = container.scrollHeight;
     }
+    // ----------------------------------------------------------
 
     function addAiMessageToUI(text, isNew, msgIdx) {
         const container = document.getElementById('chat-container');
@@ -737,12 +772,10 @@
         const msgObj = chatHistory[activeChatIndex].messages[editingMsgIdx];
         document.getElementById('user-input').value = cleanOldTags(msgObj.content); 
         autoGrow(document.getElementById('user-input')); 
-        if (msgObj.attachment) {
-            currentAttachmentData = msgObj.attachment;
-            document.getElementById('attachment-preview').style.display = 'flex';
-            if (msgObj.attachment.type === 'image') { document.getElementById('attachment-img-preview').src = msgObj.attachment.data; document.getElementById('attachment-img-preview').style.display = 'block'; document.getElementById('attachment-file-preview').style.display = 'none'; }
-            else { document.getElementById('attachment-img-preview').style.display = 'none'; document.getElementById('attachment-file-preview').style.display = 'flex'; document.getElementById('attachment-name').innerText = msgObj.attachment.name.substring(0,10); }
-        } else removeAttachment();
+        
+        currentAttachments = msgObj.attachments ? [...msgObj.attachments] : (msgObj.attachment ? [msgObj.attachment] : []);
+        renderAttachmentPreview();
+        
         hideMsgMenu(); 
     }
 
@@ -798,29 +831,29 @@
     function resetSendButton() { isGenerating = false; document.querySelector('.send-btn').innerHTML = '<i class="fas fa-arrow-up"></i>'; }
 
     async function callDatexAPI(isRegenerate = false) {
-        let message = ""; let attachmentToSave = null;
+        let message = ""; let attachmentsToSave = [];
         if (!isRegenerate) {
             const input = document.getElementById('user-input');
-            // Clean any old tags that might accidentally be in input
             message = cleanOldTags(input.value.trim()); 
-            attachmentToSave = currentAttachmentData; 
-            removeAttachment();
+            attachmentsToSave = [...currentAttachments]; 
+            currentAttachments = [];
+            renderAttachmentPreview();
             
-            if (!message && !attachmentToSave) return;
+            if (!message && attachmentsToSave.length === 0) return;
             input.value = ""; input.style.height = "44px";
             
             if (isNewSession) { 
-                chatHistory.push({ title: message ? message.substring(0, 30) : "Image Chat", messages: [] }); 
+                chatHistory.push({ title: message ? message.substring(0, 30) : "Media Chat", messages: [] }); 
                 activeChatIndex = chatHistory.length - 1; 
                 isNewSession = false; 
             }
             const msgObj = { role: "user", content: message }; 
-            if (attachmentToSave) msgObj.attachment = attachmentToSave;
+            if (attachmentsToSave.length > 0) msgObj.attachments = attachmentsToSave;
             
             chatHistory[activeChatIndex].messages.push(msgObj);
             saveHistoryToDB(); 
             renderChatList(); 
-            addUserMessageToUI(message, false, chatHistory[activeChatIndex].messages.length - 1, attachmentToSave);
+            addUserMessageToUI(message, false, chatHistory[activeChatIndex].messages.length - 1, attachmentsToSave);
         } else {
             message = chatHistory[activeChatIndex].messages.at(-1).content;
         }
@@ -835,30 +868,34 @@
         let useVision = false;
         let apiMessages = [{ "role": "system", "content": "You are DATEX AI. You have Vision. Analyse images strictly. Safety ON." }];
         
-        // --- MASTER FIX: 405 LOOP BREAKER ---
         const totalMsgs = chatHistory[activeChatIndex].messages.length;
         
         chatHistory[activeChatIndex].messages.forEach((msg, idx) => {
             const isLastMessage = (idx === totalMsgs - 1);
+            let atts = msg.attachments ? msg.attachments : (msg.attachment ? [msg.attachment] : []);
             
             if (msg.role === 'user') {
-                if (msg.attachment && msg.attachment.type === 'image') {
-                    useVision = true;
-                    // MAGIC TRICK: AI will only receive the heavy image if it is the LATEST message.
-                    // If it is an old message, it will just tell the AI "User sent an image previously" to save space.
+                if (atts.length > 0) {
+                    let hasImage = false;
+                    let contentArray = [];
+                    
                     if (isLastMessage) {
-                        apiMessages.push({ 
-                            role: 'user', 
-                            content: [
-                                { type: "text", text: cleanOldTags(msg.content) || "Analyze this image." }, 
-                                { type: "image_url", image_url: { url: msg.attachment.data } }
-                            ] 
+                        let imgCount = 0;
+                        contentArray.push({ type: "text", text: cleanOldTags(msg.content) || "Analyze the attached images." });
+                        atts.forEach(att => {
+                            if (att.type === 'image') {
+                                if(imgCount < 5) { // Groq API allows max 5 images per request safely
+                                    contentArray.push({ type: "image_url", image_url: { url: att.data } });
+                                    useVision = true;
+                                    imgCount++;
+                                }
+                                hasImage = true;
+                            }
                         });
+                        apiMessages.push({ role: 'user', content: contentArray });
                     } else {
-                        apiMessages.push({ 
-                            role: 'user', 
-                            content: `[System Note: User attached an image previously]\n${cleanOldTags(msg.content)}` 
-                        });
+                        // Loop Breaker: Never send old images to API. Saves bandwidth and stops 405 error!
+                        apiMessages.push({ role: 'user', content: `[System Note: User attached files previously]\n${cleanOldTags(msg.content)}` });
                     }
                 } else {
                     apiMessages.push({ role: 'user', content: cleanOldTags(msg.content) });
@@ -867,7 +904,6 @@
                 apiMessages.push({ role: 'assistant', content: msg.content });
             }
         });
-        // -------------------------------------
 
         abortController = new AbortController();
         try {
