@@ -524,23 +524,27 @@
         }
     });
 
+    // --- FIX: FLAWLESS KEYBOARD AUTO-SCROLL (Green Arrows Fix) ---
     if (window.visualViewport) {
         const resizeHandler = () => {
             document.body.style.height = window.visualViewport.height + 'px';
             window.scrollTo(0, 0);
+            setTimeout(() => {
+                const container = document.getElementById('chat-container');
+                container.scrollTop = container.scrollHeight;
+            }, 50);
         };
         window.visualViewport.addEventListener('resize', resizeHandler);
         resizeHandler();
     }
 
-    // --- FIX FOR KEYBOARD GREEN ARROWS ---
     document.getElementById('user-input').addEventListener('focus', () => {
         setTimeout(() => {
             const container = document.getElementById('chat-container');
             container.scrollTop = container.scrollHeight;
         }, 300);
     });
-    // -------------------------------------
+    // -----------------------------------------------------------
 
     const GROQ_API_KEY = "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"; 
     const TAVILY_API_KEY = "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"; 
@@ -583,37 +587,22 @@
             }
             const reader = new FileReader();
             reader.onload = function(e) {
-                // --- FIX: SMART HD COMPRESSION TO AVOID 405 SERVER ERROR ---
+                // As requested, 100% Original Quality (No canvas compression here)
+                currentAttachmentData = { type: file.type.startsWith('image/') ? 'image' : 'file', name: file.name, data: e.target.result };
                 const previewContainer = document.getElementById('attachment-preview');
                 const imgPreview = document.getElementById('attachment-img-preview');
                 const filePreview = document.getElementById('attachment-file-preview');
 
                 if (file.type.startsWith('image/')) {
-                    const img = new Image();
-                    img.onload = function() {
-                        const canvas = document.createElement('canvas');
-                        const MAX_WIDTH = 1200; // Ultra High Definition but safe
-                        const scaleSize = Math.min(1, MAX_WIDTH / img.width);
-                        canvas.width = img.width * scaleSize;
-                        canvas.height = img.height * scaleSize;
-                        const ctx = canvas.getContext('2d');
-                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                        const hdBase64 = canvas.toDataURL('image/jpeg', 0.85); // 85% Quality
-
-                        currentAttachmentData = { type: 'image', name: file.name, data: hdBase64 };
-                        imgPreview.src = hdBase64;
-                        imgPreview.style.display = 'block';
-                        filePreview.style.display = 'none';
-                        previewContainer.style.display = 'flex';
-                    }
-                    img.src = e.target.result;
+                    imgPreview.src = e.target.result;
+                    imgPreview.style.display = 'block';
+                    filePreview.style.display = 'none';
                 } else {
-                    currentAttachmentData = { type: 'file', name: file.name, data: null };
                     imgPreview.style.display = 'none';
                     filePreview.style.display = 'flex';
                     document.getElementById('attachment-name').innerText = file.name.substring(0, 10) + "...";
-                    previewContainer.style.display = 'flex';
                 }
+                previewContainer.style.display = 'flex';
             }
             reader.readAsDataURL(file);
         }
@@ -679,12 +668,12 @@
         document.getElementById('overlay').classList.toggle('active');
     }
 
-    // --- FIX: CLEAN UP OLD "[ATTACHED FILE...]" UGLY TEXT FROM HISTORY ---
+    // --- FIX: NO MORE UGLY [Attached:...] TAGS ---
     function cleanOldTags(text) {
         if(!text) return "";
         return text.replace(/\[Attached(?: File)?:.*?\]\n?/g, "").trim();
     }
-    // ---------------------------------------------------------------------
+    // ---------------------------------------------
 
     function addUserMessageToUI(text, isTyping, msgIdx, attachment = null) {
         const container = document.getElementById('chat-container');
@@ -812,14 +801,29 @@
         let message = ""; let attachmentToSave = null;
         if (!isRegenerate) {
             const input = document.getElementById('user-input');
-            message = cleanOldTags(input.value.trim()); attachmentToSave = currentAttachmentData; removeAttachment();
+            // Clean any old tags that might accidentally be in input
+            message = cleanOldTags(input.value.trim()); 
+            attachmentToSave = currentAttachmentData; 
+            removeAttachment();
+            
             if (!message && !attachmentToSave) return;
             input.value = ""; input.style.height = "44px";
-            if (isNewSession) { chatHistory.push({ title: message ? message.substring(0, 30) : "Image Chat", messages: [] }); activeChatIndex = chatHistory.length - 1; isNewSession = false; }
-            const msgObj = { role: "user", content: message }; if (attachmentToSave) msgObj.attachment = attachmentToSave;
+            
+            if (isNewSession) { 
+                chatHistory.push({ title: message ? message.substring(0, 30) : "Image Chat", messages: [] }); 
+                activeChatIndex = chatHistory.length - 1; 
+                isNewSession = false; 
+            }
+            const msgObj = { role: "user", content: message }; 
+            if (attachmentToSave) msgObj.attachment = attachmentToSave;
+            
             chatHistory[activeChatIndex].messages.push(msgObj);
-            saveHistoryToDB(); renderChatList(); addUserMessageToUI(message, false, chatHistory[activeChatIndex].messages.length - 1, attachmentToSave);
-        } else message = chatHistory[activeChatIndex].messages.at(-1).content;
+            saveHistoryToDB(); 
+            renderChatList(); 
+            addUserMessageToUI(message, false, chatHistory[activeChatIndex].messages.length - 1, attachmentToSave);
+        } else {
+            message = chatHistory[activeChatIndex].messages.at(-1).content;
+        }
 
         isGenerating = true; stopGenerationFlag = false;
         document.querySelector('.send-btn').innerHTML = '<div class="stop-square"></div>';
@@ -830,17 +834,40 @@
 
         let useVision = false;
         let apiMessages = [{ "role": "system", "content": "You are DATEX AI. You have Vision. Analyse images strictly. Safety ON." }];
+        
+        // --- MASTER FIX: 405 LOOP BREAKER ---
+        const totalMsgs = chatHistory[activeChatIndex].messages.length;
+        
         chatHistory[activeChatIndex].messages.forEach((msg, idx) => {
-            if (msg.role === 'user' && msg.attachment?.type === 'image') {
-                useVision = true;
-                // --- FIX: HISTORY OPTIMIZER TO PREVENT 405 LOOP ---
-                if (msg.attachment.data.length > 2000000 && idx < chatHistory[activeChatIndex].messages.length - 1) {
-                    apiMessages.push({ role: 'user', content: `[System Note: User attached a heavy image previously. Image dropped from context to save bandwidth.]\n${msg.content || ""}` });
+            const isLastMessage = (idx === totalMsgs - 1);
+            
+            if (msg.role === 'user') {
+                if (msg.attachment && msg.attachment.type === 'image') {
+                    useVision = true;
+                    // MAGIC TRICK: AI will only receive the heavy image if it is the LATEST message.
+                    // If it is an old message, it will just tell the AI "User sent an image previously" to save space.
+                    if (isLastMessage) {
+                        apiMessages.push({ 
+                            role: 'user', 
+                            content: [
+                                { type: "text", text: cleanOldTags(msg.content) || "Analyze this image." }, 
+                                { type: "image_url", image_url: { url: msg.attachment.data } }
+                            ] 
+                        });
+                    } else {
+                        apiMessages.push({ 
+                            role: 'user', 
+                            content: `[System Note: User attached an image previously]\n${cleanOldTags(msg.content)}` 
+                        });
+                    }
                 } else {
-                    apiMessages.push({ role: 'user', content: [{ type: "text", text: msg.content || "Describe image" }, { type: "image_url", image_url: { url: msg.attachment.data } }] });
+                    apiMessages.push({ role: 'user', content: cleanOldTags(msg.content) });
                 }
-            } else apiMessages.push({ role: msg.role, content: cleanOldTags(msg.content) });
+            } else {
+                apiMessages.push({ role: 'assistant', content: msg.content });
+            }
         });
+        // -------------------------------------
 
         abortController = new AbortController();
         try {
