@@ -412,12 +412,56 @@
             visibility: visible;
             opacity: 1;
         }
+
+        /* LIGHTBOX (IMAGE ZOOM) CSS */
+        .lightbox {
+            display: none; 
+            position: fixed; 
+            z-index: 4000; 
+            left: 0; 
+            top: 0; 
+            width: 100%; 
+            height: 100%; 
+            background-color: rgba(0,0,0,0.85); 
+            backdrop-filter: blur(5px);
+        }
+        .lightbox-content {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100%;
+            width: 100%;
+        }
+        .lightbox img {
+            max-width: 90%; 
+            max-height: 80%; 
+            border-radius: 12px; 
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            object-fit: contain;
+        }
+        .lightbox-close {
+            position: absolute; 
+            top: 20px; 
+            right: 30px; 
+            color: #fff; 
+            font-size: 35px; 
+            font-weight: bold; 
+            cursor: pointer;
+            z-index: 4001;
+        }
     </style>
 </head>
 <body onclick="hideMsgMenu()">
 
     <div class="overlay" id="overlay" onclick="toggleSidebar()"></div>
     <div class="attachment-overlay" id="attachment-overlay" onclick="toggleAttachmentMenu()"></div>
+
+    <div id="lightbox" class="lightbox" onclick="closeLightbox()">
+        <span class="lightbox-close">&times;</span>
+        <div class="lightbox-content">
+            <img id="lightbox-img" src="">
+        </div>
+    </div>
 
     <div id="toast" class="toast-msg">Select up to 10 items</div>
 
@@ -500,6 +544,15 @@
     </div>
 
     <script>
+    // LIGHTBOX FUNCTIONALITY
+    function openLightbox(src) {
+        document.getElementById('lightbox-img').src = src;
+        document.getElementById('lightbox').style.display = 'block';
+    }
+    function closeLightbox() {
+        document.getElementById('lightbox').style.display = 'none';
+    }
+
     function showToast(message) {
         const toast = document.getElementById("toast");
         toast.innerText = message;
@@ -637,6 +690,7 @@
                     img.onload = function() {
                         const canvas = document.createElement('canvas');
                         
+                        // Smart Scaling (Max 800px) to prevent payload crash
                         const MAX_DIMENSION = 800;
                         let width = img.width;
                         let height = img.height;
@@ -812,38 +866,42 @@
 
     function cleanOldTags(text) {
         if(!text) return "";
-        return text.replace(/\[Attached(?: File)?:.*?\]\n?/g, "").trim();
+        return text.replace(/\[System Note: User attached files previously\]\n?/g, "").trim();
     }
 
-    // --- FIX 1: VERTICAL GEMINI CHAT BUBBLE LAYOUT ---
     function addUserMessageToUI(text, isTyping, msgIdx, attachments = []) {
         const container = document.getElementById('chat-container');
         if(document.getElementById('welcome-screen')) document.getElementById('welcome-screen').remove();
-        const row = document.createElement('div');
-        row.className = 'message-row user-row';
-        row.setAttribute('data-index', msgIdx); 
         
-        let attachmentHTML = '';
         if (attachments && attachments.length > 0) {
-            // Using flex-direction: column to stack them "niche-niche"
-            attachmentHTML = `<div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px; width: 100%;">`;
             attachments.forEach(att => {
+                const row = document.createElement('div');
+                row.className = 'message-row user-row';
+                row.setAttribute('data-index', msgIdx); 
+                
+                let attHtml = '';
                 if (att.type === 'image') {
-                    // Full width of bubble, natural height, vertically stacked exactly like Gemini
-                    attachmentHTML += `<img src="${att.data}" style="width: 100%; height: auto; border-radius: 8px; object-fit: contain; background: transparent;">`;
+                    attHtml = `<img src="${att.data}" onclick="openLightbox(this.src)" style="width: 100%; max-width: 250px; border-radius: 12px; object-fit: contain; background: transparent; cursor: pointer; display: block;">`;
                 } else {
-                    attachmentHTML += `<div style="display: flex; align-items: center; gap: 6px; background: #e5e7eb; padding: 10px; border-radius: 12px;"><i class="fas fa-file-pdf" style="color: #1a73e8; font-size: 24px;"></i><span style="font-size: 13px; font-weight: 500; color:#333; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${att.name}</span></div>`;
+                    attHtml = `<div style="display: flex; align-items: center; gap: 6px;"><i class="fas fa-file-pdf" style="color: #1a73e8; font-size: 24px;"></i><span style="font-size: 13px; font-weight: 500; color:#333; max-width: 150px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${att.name}</span></div>`;
                 }
+                
+                row.innerHTML = `<div class="bubble-container"><div class="bubble user-bubble" style="padding: 6px; background: ${att.type==='image'?'transparent':'#f3f4f6'};">${attHtml}</div><div class="action-bar user-action-bar"><button class="action-btn" onclick="openMenu(event, this)"><i class="fas fa-ellipsis-v"></i></button></div></div>`;
+                container.appendChild(row);
             });
-            attachmentHTML += `</div>`;
+        }
+
+        let cleanText = cleanOldTags(text);
+        if (cleanText) {
+            const row = document.createElement('div');
+            row.className = 'message-row user-row';
+            row.setAttribute('data-index', msgIdx); 
+            row.innerHTML = `<div class="bubble-container"><div class="bubble user-bubble"><span>${cleanText}</span></div><div class="action-bar user-action-bar"><button class="action-btn" onclick="openMenu(event, this)"><i class="fas fa-ellipsis-v"></i></button></div></div>`;
+            container.appendChild(row);
         }
         
-        let cleanText = cleanOldTags(text);
-        row.innerHTML = `<div class="bubble-container"><div class="bubble user-bubble" style="display: flex; flex-direction: column;">${attachmentHTML}${cleanText ? `<span>${cleanText}</span>` : ''}</div><div class="action-bar user-action-bar"><button class="action-btn" onclick="openMenu(event, this)"><i class="fas fa-ellipsis-v"></i></button></div></div>`;
-        container.appendChild(row);
         container.scrollTop = container.scrollHeight;
     }
-    // ------------------------------------------------
 
     function addAiMessageToUI(text, isNew, msgIdx) {
         const container = document.getElementById('chat-container');
@@ -988,7 +1046,6 @@
         
         const totalMsgs = chatHistory[activeChatIndex].messages.length;
         
-        // --- FIX 2: 100% ERROR-FREE API PAYLOAD (No History Crashes) ---
         chatHistory[activeChatIndex].messages.forEach((msg, idx) => {
             const isLastMessage = (idx === totalMsgs - 1);
             let atts = msg.attachments ? msg.attachments : (msg.attachment ? [msg.attachment] : []);
@@ -996,38 +1053,37 @@
             
             if (msg.role === 'user') {
                 if (isLastMessage && atts.length > 0) {
-                    // Send ONLY the FIRST image to Groq to completely avoid 400/413/405 payload crashes
-                    let firstImg = atts.find(a => a.type === 'image');
-                    if (firstImg) {
-                        useVision = true;
-                        apiMessages.push({ 
-                            role: 'user', 
-                            content: [
-                                { type: "text", text: cleanMsgText || "Analyze the attached image." },
-                                { type: "image_url", image_url: { url: firstImg.data } }
-                            ] 
-                        });
-                    } else {
-                        apiMessages.push({ role: 'user', content: cleanMsgText || "Attached files." });
-                    }
+                    let imgCount = 0;
+                    let contentArray = [];
+                    if (cleanMsgText) contentArray.push({ type: "text", text: cleanMsgText });
+                    else contentArray.push({ type: "text", text: "Analyze the attached images." });
+                    
+                    atts.forEach(att => {
+                        if (att.type === 'image' && imgCount < 5) { 
+                            contentArray.push({ type: "image_url", image_url: { url: att.data } });
+                            useVision = true;
+                            imgCount++;
+                        }
+                    });
+                    apiMessages.push({ role: 'user', content: contentArray });
                 } else {
-                    // HISTORY PURIFIER: Strip ALL complex formats from older messages. 
-                    // This guarantees Text-Only models will NEVER crash on normal messages!
                     let historyText = cleanMsgText;
-                    if (atts.length > 0) historyText = `[User attached files previously]\n` + historyText;
+                    if (atts.length > 0) historyText = `[System Note: User attached files previously]\n` + historyText;
                     apiMessages.push({ role: 'user', content: historyText });
                 }
             } else {
                 apiMessages.push({ role: 'assistant', content: msg.content });
             }
         });
-        // ----------------------------------------------------------------
+
+        // --- NEW LLAMA 4 SCOUT MODEL FIX ---
+        const selectedModel = useVision ? "meta-llama/llama-4-scout-17b-16e-instruct" : "llama-3.3-70b-versatile";
 
         abortController = new AbortController();
         try {
             const res = await fetch("[https://api.groq.com/openai/v1/chat/completions](https://api.groq.com/openai/v1/chat/completions)", {
                 method: 'POST', headers: { 'Authorization': `Bearer ${GROQ_API_KEY}`, 'Content-Type': 'application/json' }, signal: abortController.signal,
-                body: JSON.stringify({ "messages": apiMessages, "model": useVision ? "llama-3.2-11b-vision-preview" : "llama-3.3-70b-versatile" })
+                body: JSON.stringify({ "messages": apiMessages, "model": selectedModel })
             });
             
             if (!res.ok) {
@@ -1036,7 +1092,7 @@
                     const errData = await res.json();
                     errMsg = errData.error?.message || errMsg;
                 } catch(e) {
-                    errMsg = `API is currently overloaded or unavailable (Status ${res.status}). Please try again in a few seconds.`;
+                    errMsg = `API overloaded or blocked by security (Status ${res.status}). Please try again.`;
                 }
                 throw new Error(errMsg);
             }
