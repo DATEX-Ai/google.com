@@ -524,6 +524,24 @@
         }
     });
 
+    if (window.visualViewport) {
+        const resizeHandler = () => {
+            document.body.style.height = window.visualViewport.height + 'px';
+            window.scrollTo(0, 0);
+        };
+        window.visualViewport.addEventListener('resize', resizeHandler);
+        resizeHandler();
+    }
+
+    // --- FIX FOR KEYBOARD GREEN ARROWS ---
+    document.getElementById('user-input').addEventListener('focus', () => {
+        setTimeout(() => {
+            const container = document.getElementById('chat-container');
+            container.scrollTop = container.scrollHeight;
+        }, 300);
+    });
+    // -------------------------------------
+
     const GROQ_API_KEY = "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"; 
     const TAVILY_API_KEY = "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"; 
 
@@ -565,20 +583,37 @@
             }
             const reader = new FileReader();
             reader.onload = function(e) {
-                currentAttachmentData = { type: file.type.startsWith('image/') ? 'image' : 'file', name: file.name, data: e.target.result };
+                // --- FIX: SMART HD COMPRESSION TO AVOID 405 SERVER ERROR ---
                 const previewContainer = document.getElementById('attachment-preview');
                 const imgPreview = document.getElementById('attachment-img-preview');
                 const filePreview = document.getElementById('attachment-file-preview');
+
                 if (file.type.startsWith('image/')) {
-                    imgPreview.src = e.target.result;
-                    imgPreview.style.display = 'block';
-                    filePreview.style.display = 'none';
+                    const img = new Image();
+                    img.onload = function() {
+                        const canvas = document.createElement('canvas');
+                        const MAX_WIDTH = 1200; // Ultra High Definition but safe
+                        const scaleSize = Math.min(1, MAX_WIDTH / img.width);
+                        canvas.width = img.width * scaleSize;
+                        canvas.height = img.height * scaleSize;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                        const hdBase64 = canvas.toDataURL('image/jpeg', 0.85); // 85% Quality
+
+                        currentAttachmentData = { type: 'image', name: file.name, data: hdBase64 };
+                        imgPreview.src = hdBase64;
+                        imgPreview.style.display = 'block';
+                        filePreview.style.display = 'none';
+                        previewContainer.style.display = 'flex';
+                    }
+                    img.src = e.target.result;
                 } else {
+                    currentAttachmentData = { type: 'file', name: file.name, data: null };
                     imgPreview.style.display = 'none';
                     filePreview.style.display = 'flex';
                     document.getElementById('attachment-name').innerText = file.name.substring(0, 10) + "...";
+                    previewContainer.style.display = 'flex';
                 }
-                previewContainer.style.display = 'flex';
             }
             reader.readAsDataURL(file);
         }
@@ -644,6 +679,13 @@
         document.getElementById('overlay').classList.toggle('active');
     }
 
+    // --- FIX: CLEAN UP OLD "[ATTACHED FILE...]" UGLY TEXT FROM HISTORY ---
+    function cleanOldTags(text) {
+        if(!text) return "";
+        return text.replace(/\[Attached(?: File)?:.*?\]\n?/g, "").trim();
+    }
+    // ---------------------------------------------------------------------
+
     function addUserMessageToUI(text, isTyping, msgIdx, attachment = null) {
         const container = document.getElementById('chat-container');
         if(document.getElementById('welcome-screen')) document.getElementById('welcome-screen').remove();
@@ -655,7 +697,8 @@
             if (attachment.type === 'image') attachmentHTML = `<img src="${attachment.data}" style="width: 100%; max-width: 250px; border-radius: 12px; margin-bottom: 8px;">`;
             else attachmentHTML = `<div style="display: flex; align-items: center; gap: 10px; background: #e5e7eb; padding: 10px 14px; border-radius: 12px; margin-bottom: 8px;"><i class="fas fa-file-pdf" style="color: #1a73e8; font-size: 24px;"></i><span style="font-size: 13px; font-weight: 500;">${attachment.name}</span></div>`;
         }
-        row.innerHTML = `<div class="bubble-container"><div class="bubble user-bubble" style="display: flex; flex-direction: column;">${attachmentHTML}${text ? `<span>${text}</span>` : ''}</div><div class="action-bar user-action-bar"><button class="action-btn" onclick="openMenu(event, this)"><i class="fas fa-ellipsis-v"></i></button></div></div>`;
+        let cleanText = cleanOldTags(text);
+        row.innerHTML = `<div class="bubble-container"><div class="bubble user-bubble" style="display: flex; flex-direction: column;">${attachmentHTML}${cleanText ? `<span>${cleanText}</span>` : ''}</div><div class="action-bar user-action-bar"><button class="action-btn" onclick="openMenu(event, this)"><i class="fas fa-ellipsis-v"></i></button></div></div>`;
         container.appendChild(row);
         container.scrollTop = container.scrollHeight;
     }
@@ -703,7 +746,7 @@
         if(!selectedMsgRow) return; 
         editingMsgIdx = parseInt(selectedMsgRow.getAttribute('data-index')); 
         const msgObj = chatHistory[activeChatIndex].messages[editingMsgIdx];
-        document.getElementById('user-input').value = msgObj.content || ""; 
+        document.getElementById('user-input').value = cleanOldTags(msgObj.content); 
         autoGrow(document.getElementById('user-input')); 
         if (msgObj.attachment) {
             currentAttachmentData = msgObj.attachment;
@@ -769,7 +812,7 @@
         let message = ""; let attachmentToSave = null;
         if (!isRegenerate) {
             const input = document.getElementById('user-input');
-            message = input.value.trim(); attachmentToSave = currentAttachmentData; removeAttachment();
+            message = cleanOldTags(input.value.trim()); attachmentToSave = currentAttachmentData; removeAttachment();
             if (!message && !attachmentToSave) return;
             input.value = ""; input.style.height = "44px";
             if (isNewSession) { chatHistory.push({ title: message ? message.substring(0, 30) : "Image Chat", messages: [] }); activeChatIndex = chatHistory.length - 1; isNewSession = false; }
@@ -787,11 +830,16 @@
 
         let useVision = false;
         let apiMessages = [{ "role": "system", "content": "You are DATEX AI. You have Vision. Analyse images strictly. Safety ON." }];
-        chatHistory[activeChatIndex].messages.forEach(msg => {
+        chatHistory[activeChatIndex].messages.forEach((msg, idx) => {
             if (msg.role === 'user' && msg.attachment?.type === 'image') {
                 useVision = true;
-                apiMessages.push({ role: 'user', content: [{ type: "text", text: msg.content || "Describe image" }, { type: "image_url", image_url: { url: msg.attachment.data } }] });
-            } else apiMessages.push({ role: msg.role, content: msg.content });
+                // --- FIX: HISTORY OPTIMIZER TO PREVENT 405 LOOP ---
+                if (msg.attachment.data.length > 2000000 && idx < chatHistory[activeChatIndex].messages.length - 1) {
+                    apiMessages.push({ role: 'user', content: `[System Note: User attached a heavy image previously. Image dropped from context to save bandwidth.]\n${msg.content || ""}` });
+                } else {
+                    apiMessages.push({ role: 'user', content: [{ type: "text", text: msg.content || "Describe image" }, { type: "image_url", image_url: { url: msg.attachment.data } }] });
+                }
+            } else apiMessages.push({ role: msg.role, content: cleanOldTags(msg.content) });
         });
 
         abortController = new AbortController();
@@ -801,19 +849,16 @@
                 body: JSON.stringify({ "messages": apiMessages, "model": useVision ? "llama-3.2-11b-vision-preview" : "llama-3.3-70b-versatile", "max_tokens": 4096 })
             });
             
-            // --- MODIFIED ERROR HANDLING BLOCK ---
             if (!res.ok) {
                 let errMsg = `Server Error ${res.status}`;
                 try {
                     const errData = await res.json();
                     errMsg = errData.error?.message || errMsg;
                 } catch(e) {
-                    // API overload HTML block catcher
                     errMsg = `API is currently overloaded or unavailable (Status ${res.status}). Please try again in a few seconds.`;
                 }
                 throw new Error(errMsg);
             }
-            // ------------------------------------
 
             const data = await res.json();
             const aiResponse = data.choices[0].message.content;
