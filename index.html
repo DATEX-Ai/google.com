@@ -159,13 +159,21 @@
             overflow: hidden;
         }
 
-        /* --- NEW MULTI-ATTACHMENT CSS --- */
         .attachment-preview-container {
             display: none;
-            flex-wrap: wrap;
+            flex-wrap: nowrap;
             gap: 10px;
             padding: 12px 20px 0 20px;
+            overflow-x: auto;
+            overflow-y: hidden;
+            scroll-behavior: smooth;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
         }
+        .attachment-preview-container::-webkit-scrollbar {
+            display: none;
+        }
+
         .attachment-chip {
             position: relative;
             width: 65px;
@@ -202,7 +210,21 @@
             z-index: 10;
             box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         }
-        /* -------------------------------- */
+        .file-icon-placeholder {
+            font-size: 28px;
+            color: #1a73e8;
+        }
+        .file-name-placeholder {
+            font-size: 10px;
+            color: #555;
+            margin-top: 6px;
+            max-width: 60px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-weight: 500;
+            text-align: center;
+        }
 
         .input-bar { 
             background: transparent; 
@@ -544,7 +566,6 @@
     let abortController = null;
     let currentAiRow = null;
     
-    // NEW: ARRAY TO HOLD UP TO 10 FILES
     let currentAttachments = [];
 
     document.getElementById('chat-container').addEventListener('scroll', () => {
@@ -563,14 +584,15 @@
     function triggerGallery() { document.getElementById('gallery-input').click(); toggleAttachmentMenu(); }
     function triggerFiles() { document.getElementById('file-input').click(); toggleAttachmentMenu(); }
 
-    // --- MASTER FIX: REVERTED COMPRESSION & ALLOW 10 FILES ---
     function handleFileSelect(event) {
         const files = event.target.files;
         if(!files || files.length === 0) return;
 
+        let limitReached = false;
+
         for (let i = 0; i < files.length; i++) {
             if (currentAttachments.length >= 10) {
-                alert("Maximum 10 files allowed!");
+                limitReached = true;
                 break;
             }
 
@@ -583,17 +605,17 @@
             const reader = new FileReader();
             reader.onload = function(e) {
                 if (file.type.startsWith('image/')) {
-                    // COMPRESSION RESTORED to prevent 405/413 crashes!
                     const img = new Image();
                     img.onload = function() {
                         const canvas = document.createElement('canvas');
-                        const MAX_WIDTH = 1000; // Good HD quality
-                        const scaleSize = Math.min(1, MAX_WIDTH / img.width);
-                        canvas.width = img.width * scaleSize;
-                        canvas.height = img.height * scaleSize;
+                        // NO RESIZE - RETAINING ORIGINAL HEIGHT AND WIDTH
+                        canvas.width = img.width;
+                        canvas.height = img.height;
                         const ctx = canvas.getContext('2d');
                         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                        const compressedBase64 = canvas.toDataURL('image/jpeg', 0.8);
+                        
+                        // COMPRESSING JPEG QUALITY ONLY (50% quality to save bytes like Gemini)
+                        const compressedBase64 = canvas.toDataURL('image/jpeg', 0.5); 
 
                         currentAttachments.push({ type: 'image', name: file.name, data: compressedBase64 });
                         renderAttachmentPreview();
@@ -606,6 +628,11 @@
             }
             reader.readAsDataURL(file);
         }
+        
+        if (limitReached) {
+            alert("Maximum 10 items can be selected at a time!");
+        }
+        
         event.target.value = '';
     }
 
@@ -632,13 +659,14 @@
             chip.appendChild(removeBtn);
             container.appendChild(chip);
         });
+        
+        container.scrollLeft = container.scrollWidth;
     }
 
     function removeAttachment(index) {
         currentAttachments.splice(index, 1);
         renderAttachmentPreview();
     }
-    // --------------------------------------------------------
 
     function autoGrow(element) {
         element.style.height = "44px"; 
@@ -672,7 +700,6 @@
         const container = document.getElementById('chat-container');
         container.innerHTML = "";
         chatHistory[index].messages.forEach((msg, msgIdx) => {
-            // Support backwards compatibility for single attachments
             let atts = msg.attachments ? msg.attachments : (msg.attachment ? [msg.attachment] : []);
             if(msg.role === "user") addUserMessageToUI(msg.content, false, msgIdx, atts);
             else addAiMessageToUI(msg.content, false, msgIdx);
@@ -701,7 +728,6 @@
         return text.replace(/\[Attached(?: File)?:.*?\]\n?/g, "").trim();
     }
 
-    // --- SUPPORT FOR RENDERING MULTIPLE ATTACHMENTS IN CHAT ---
     function addUserMessageToUI(text, isTyping, msgIdx, attachments = []) {
         const container = document.getElementById('chat-container');
         if(document.getElementById('welcome-screen')) document.getElementById('welcome-screen').remove();
@@ -725,7 +751,6 @@
         container.appendChild(row);
         container.scrollTop = container.scrollHeight;
     }
-    // ----------------------------------------------------------
 
     function addAiMessageToUI(text, isNew, msgIdx) {
         const container = document.getElementById('chat-container');
@@ -876,25 +901,19 @@
             
             if (msg.role === 'user') {
                 if (atts.length > 0) {
-                    let hasImage = false;
-                    let contentArray = [];
-                    
                     if (isLastMessage) {
                         let imgCount = 0;
+                        let contentArray = [];
                         contentArray.push({ type: "text", text: cleanOldTags(msg.content) || "Analyze the attached images." });
                         atts.forEach(att => {
-                            if (att.type === 'image') {
-                                if(imgCount < 5) { // Groq API allows max 5 images per request safely
-                                    contentArray.push({ type: "image_url", image_url: { url: att.data } });
-                                    useVision = true;
-                                    imgCount++;
-                                }
-                                hasImage = true;
+                            if (att.type === 'image' && imgCount < 2) { 
+                                contentArray.push({ type: "image_url", image_url: { url: att.data } });
+                                useVision = true;
+                                imgCount++;
                             }
                         });
                         apiMessages.push({ role: 'user', content: contentArray });
                     } else {
-                        // Loop Breaker: Never send old images to API. Saves bandwidth and stops 405 error!
                         apiMessages.push({ role: 'user', content: `[System Note: User attached files previously]\n${cleanOldTags(msg.content)}` });
                     }
                 } else {
@@ -909,7 +928,7 @@
         try {
             const res = await fetch("[https://api.groq.com/openai/v1/chat/completions](https://api.groq.com/openai/v1/chat/completions)", {
                 method: 'POST', headers: { 'Authorization': `Bearer ${GROQ_API_KEY}`, 'Content-Type': 'application/json' }, signal: abortController.signal,
-                body: JSON.stringify({ "messages": apiMessages, "model": useVision ? "llama-3.2-11b-vision-preview" : "llama-3.3-70b-versatile", "max_tokens": 4096 })
+                body: JSON.stringify({ "messages": apiMessages, "model": useVision ? "llama-3.2-11b-vision-preview" : "llama-3.3-70b-versatile" })
             });
             
             if (!res.ok) {
