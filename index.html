@@ -152,7 +152,64 @@
             width: 100%;
             max-width: 720px; 
             display: flex;
+            flex-direction: column; 
         }
+
+        .attachment-preview {
+            display: none;
+            position: relative;
+            margin-left: 20px;
+            margin-bottom: 12px;
+            width: 72px;
+            height: 72px;
+            border-radius: 16px;
+            background: #f8f9fa;
+            border: 1px solid #e5e7eb;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+        .attachment-preview img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 15px;
+        }
+        .attachment-preview .remove-btn {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            width: 24px;
+            height: 24px;
+            background: rgba(255, 255, 255, 0.95);
+            border: 1px solid #ddd;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 11px;
+            color: #333;
+            cursor: pointer;
+            z-index: 10;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .file-icon-placeholder {
+            font-size: 28px;
+            color: #1a73e8;
+        }
+        .file-name-placeholder {
+            font-size: 10px;
+            color: #555;
+            margin-top: 6px;
+            max-width: 60px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-weight: 500;
+            text-align: center;
+        }
+
         .input-bar { 
             flex: 1; 
             background: #f3f4f6; 
@@ -234,10 +291,9 @@
         .action-btn { background: transparent; border: none; color: #aaa; cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; transition: 0.2s; padding: 5px; }
         .action-btn:hover { color: #333; }
 
-        /* --- NEW: BOTTOM SHEET ATTACHMENT MENU CSS --- */
         .attachment-menu {
             position: fixed;
-            bottom: -300px; /* Hidden below screen */
+            bottom: -300px;
             left: 0;
             width: 100%;
             background: #fff;
@@ -253,7 +309,6 @@
         .attachment-menu.active {
             bottom: 0;
         }
-        /* Top pull handle visual */
         .attachment-menu::before {
             content: '';
             position: absolute;
@@ -304,7 +359,6 @@
         .attachment-overlay.active {
             display: block;
         }
-        /* Hidden file inputs */
         .hidden-input {
             display: none;
         }
@@ -313,7 +367,6 @@
 <body onclick="hideMsgMenu()">
 
     <div class="overlay" id="overlay" onclick="toggleSidebar()"></div>
-    
     <div class="attachment-overlay" id="attachment-overlay" onclick="toggleAttachmentMenu()"></div>
 
     <div id="msg-menu" class="msg-menu">
@@ -368,6 +421,16 @@
 
         <div class="bottom-container">
             <div class="input-bar-wrapper">
+                
+                <div id="attachment-preview" class="attachment-preview" style="display: none;">
+                    <img id="attachment-img-preview" src="" style="display: none;">
+                    <div id="attachment-file-preview" style="display: none; flex-direction: column; align-items: center; justify-content: center; height: 100%; width: 100%;">
+                        <i id="attachment-icon" class="fas fa-file-alt file-icon-placeholder"></i>
+                        <span id="attachment-name" class="file-name-placeholder"></span>
+                    </div>
+                    <div class="remove-btn" onclick="removeAttachment()"><i class="fas fa-times"></i></div>
+                </div>
+
                 <div class="input-bar">
                     <div style="height: 44px; display: flex; align-items: center; margin-right: 12px;">
                         <i class="fas fa-plus" onclick="toggleAttachmentMenu(event)" style="color:#777; cursor:pointer; font-size: 18px;"></i>
@@ -421,7 +484,6 @@
     });
     window.addEventListener('scroll', hideMsgMenu);
 
-    // --- NEW: ATTACHMENT MENU LOGIC ---
     function toggleAttachmentMenu(e) {
         if(e) e.stopPropagation();
         const menu = document.getElementById('attachment-menu');
@@ -453,15 +515,44 @@
     function handleFileSelect(event) {
         const file = event.target.files[0];
         if(file) {
-            const input = document.getElementById('user-input');
-            // Adding a small visual cue that file is selected
-            input.value += `[Attached File: ${file.name}] `;
-            autoGrow(input);
+            // STRICT VIDEO BLOCKER
+            if (file.type.startsWith('video/')) {
+                alert("Videos are not allowed! Please select a valid photo or document.");
+                event.target.value = '';
+                return;
+            }
+
+            window.currentAttachmentName = file.name;
+            const previewContainer = document.getElementById('attachment-preview');
+            const imgPreview = document.getElementById('attachment-img-preview');
+            const filePreview = document.getElementById('attachment-file-preview');
+            const fileNameSpan = document.getElementById('attachment-name');
+
+            if (file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    imgPreview.src = e.target.result;
+                    imgPreview.style.display = 'block';
+                    filePreview.style.display = 'none';
+                    previewContainer.style.display = 'flex';
+                }
+                reader.readAsDataURL(file);
+            } else {
+                imgPreview.style.display = 'none';
+                filePreview.style.display = 'flex';
+                let shortName = file.name.length > 12 ? file.name.substring(0, 8) + ".." + file.name.substring(file.name.lastIndexOf('.')) : file.name;
+                fileNameSpan.innerText = shortName;
+                previewContainer.style.display = 'flex';
+            }
         }
-        // Clear input value so same file can be selected again
         event.target.value = '';
     }
-    // ----------------------------------
+
+    function removeAttachment() {
+        window.currentAttachmentName = "";
+        document.getElementById('attachment-preview').style.display = 'none';
+        document.getElementById('attachment-img-preview').src = "";
+    }
 
     function autoGrow(element) {
         element.style.height = "44px"; 
@@ -886,6 +977,13 @@
         if (!isRegenerate) {
             const input = document.getElementById('user-input');
             message = input.value.trim();
+            
+            if (window.currentAttachmentName) {
+                let attachText = `[Attached: ${window.currentAttachmentName}]`;
+                message = message ? attachText + "\n" + message : attachText;
+                removeAttachment(); 
+            }
+
             if (!message) return;
             
             sessionFinalText = "";
@@ -944,7 +1042,8 @@ CRITICAL INSTRUCTIONS:
 4. ADVANCED MATHEMATICS (STRICT): A backend calculator solves math for you. IF a secret System Note provides a math result, YOU ARE FORBIDDEN from calculating it yourself. You MUST copy the exact number from the secret note and present it as your final answer.
 5. LIVE INTERNET & FAKE LINKS: You HAVE real-time live internet access. DO NOT INVENT, GUESS, OR HALLUCINATE LINKS. If you do not have the exact URL provided in the [System Note (Real-Time Internet Data)], you MUST state that you don't have the link. Only format provided URLs like [Website Name](https://...).
 6. IDENTITY: ONLY IF directly asked "who created you" or "who is your owner", state you were created and are owned by N.Sujal Kumar, a 16-year-old visionary from India.
-7. CODING RULE: Only provide programming code if explicitly asked.`;
+7. CODING RULE: Only provide programming code if explicitly asked.
+8. STRICT SAFETY & NSFW POLICY: This is a family-friendly AI app used by children. ABSOLUTELY NO explicit, adult, NSFW, or inappropriate content is permitted. If the user asks for, references, or uploads explicit adult content, you MUST strictly refuse to process it and state that you do not support inappropriate requests.`;
 
         let mathContext = "";
         let hasValidMath = false;
