@@ -29,7 +29,6 @@
             position: fixed; 
             top: 0;
             left: 0;
-            /* COMPLETELY DISABLED BLUE HIGHLIGHT & LONG PRESS EVERYWHERE (100% STRICT LOCK) */
             -webkit-touch-callout: none !important; 
             -webkit-user-select: none !important; 
             -moz-user-select: none !important; 
@@ -38,7 +37,6 @@
         }
 
         textarea, input {
-            /* ONLY INPUT AREA IS SELECTABLE */
             -webkit-user-select: auto !important;
             -moz-user-select: auto !important;
             -ms-user-select: auto !important;
@@ -627,7 +625,6 @@
         }, 300);
     });
 
-    // NEW FRESH GROQ API KEY INJECTED
     const GROQ_API_KEY = "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"; 
     const TAVILY_API_KEY = "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"; 
 
@@ -691,7 +688,6 @@
                     img.onload = function() {
                         const canvas = document.createElement('canvas');
                         
-                        // FIX: PROPORTIONAL SCALING TO PREVENT 4MB PAYLOAD CRASH (THE REAL CULPRIT)
                         const MAX_DIMENSION = 1024;
                         let width = img.width;
                         let height = img.height;
@@ -882,7 +878,6 @@
                 
                 let attHtml = '';
                 if (att.type === 'image') {
-                    // FIX: BUBBLE UI LARGE SIZE, VERTICAL STACK (Gemini Style)
                     attHtml = `<img src="${att.data}" onclick="openLightbox(this.src)" style="width: 100%; max-width: 250px; border-radius: 12px; object-fit: contain; background: transparent; cursor: pointer; display: block;">`;
                 } else {
                     attHtml = `<div style="display: flex; align-items: center; gap: 6px;"><i class="fas fa-file-pdf" style="color: #1a73e8; font-size: 24px;"></i><span style="font-size: 13px; font-weight: 500; color:#333; max-width: 150px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${att.name}</span></div>`;
@@ -1061,7 +1056,6 @@
                     else contentArray.push({ type: "text", text: "Analyze the attached images." });
                     
                     atts.forEach(att => {
-                        // Max 5 images per API request to prevent overload
                         if (att.type === 'image' && imgCount < 5) { 
                             contentArray.push({ type: "image_url", image_url: { url: att.data } });
                             useVision = true;
@@ -1079,7 +1073,8 @@
             }
         });
 
-        const selectedModel = useVision ? "meta-llama/llama-4-scout-17b-16e-instruct" : "llama-3.3-70b-versatile";
+        // FIXED: REVERTED TO THE STABLE AND WORKING VISION MODEL
+        const selectedModel = useVision ? "llama-3.2-11b-vision-preview" : "llama-3.3-70b-versatile";
 
         abortController = new AbortController();
         try {
