@@ -510,7 +510,7 @@
         resizeHandler();
     }
 
-    const GROQ_API_KEY = "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"; 
+    const NEW_API_KEY = "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"; 
     const TAVILY_API_KEY = "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"; 
 
     let chatHistory = JSON.parse(localStorage.getItem('datex_full_history')) || [];
@@ -1007,7 +1007,8 @@ CRITICAL INSTRUCTIONS:
             }
         });
 
-        const selectedModel = useVision ? "llama-3.2-11b-vision-preview" : "llama-3.3-70b-versatile";
+        // ChatGPT (gpt-4o) ke liye model change kiya
+        const selectedModel = useVision ? "openai/gpt-4o" : "openai/gpt-4o";
 
         const searchKeywords = ['aaj', 'today', 'news', 'khabar', 'price', 'match', 'score', 'latest', 'update', 'weather', 'mausam', 'kal', 'yesterday', 'current', 'stock', 'who won', 'kaun jeeta', 'batao', 'search', 'link', 'youtube', 'video', 'channel', 'instagram', 'linkedin', 'facebook', 'twitter', 'website', 'profile', 'account', 'url', 'site', 'browser', 'google'];
         const needsSearch = searchKeywords.some(keyword => message.toLowerCase().includes(keyword));
@@ -1029,8 +1030,9 @@ CRITICAL INSTRUCTIONS:
         abortController = new AbortController();
 
         try {
-            const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-                method: 'POST', headers: { 'Authorization': `Bearer ${GROQ_API_KEY}`, 'Content-Type': 'application/json' }, signal: abortController.signal,
+            // Groq ke API URL ki jagah OpenRouter ka URL daala
+            const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+                method: 'POST', headers: { 'Authorization': `Bearer ${NEW_API_KEY}`, 'Content-Type': 'application/json' }, signal: abortController.signal,
                 body: JSON.stringify({ 
                     "messages": apiMessages, 
                     "model": selectedModel,
