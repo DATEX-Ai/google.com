@@ -29,6 +29,7 @@
             position: fixed; 
             top: 0;
             left: 0;
+            /* COMPLETELY DISABLED BLUE HIGHLIGHT & LONG PRESS EVERYWHERE (100% STRICT LOCK) */
             -webkit-touch-callout: none !important; 
             -webkit-user-select: none !important; 
             -moz-user-select: none !important; 
@@ -37,6 +38,7 @@
         }
 
         textarea, input {
+            /* ONLY INPUT AREA IS SELECTABLE */
             -webkit-user-select: auto !important;
             -moz-user-select: auto !important;
             -ms-user-select: auto !important;
@@ -97,7 +99,6 @@
             max-width: 800px; 
             margin: 0 auto; 
             scrollbar-width: none; 
-            scroll-behavior: smooth;
         }
         
         .welcome-screen { 
@@ -158,10 +159,63 @@
             flex-direction: column;
             width: 100%;
             overflow: hidden;
-            position: relative;
+            position: relative; /* ADDED JUST TO HOLD OVERLAYS, DOES NOT BREAK BASE CSS */
         }
 
-        /* --- STANDARD TEXT INPUT BAR --- */
+        .attachment-preview {
+            display: none;
+            position: relative;
+            margin: 12px 0 0 20px; 
+            width: 72px;
+            height: 72px;
+            border-radius: 12px;
+            background: #e5e7eb;
+            border: 1px solid #ddd;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+        .attachment-preview img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 11px;
+        }
+        .attachment-preview .remove-btn {
+            position: absolute;
+            top: -6px;
+            right: -6px;
+            width: 22px;
+            height: 22px;
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 10px;
+            color: #333;
+            cursor: pointer;
+            z-index: 10;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .file-icon-placeholder {
+            font-size: 28px;
+            color: #1a73e8;
+        }
+        .file-name-placeholder {
+            font-size: 10px;
+            color: #555;
+            margin-top: 6px;
+            max-width: 60px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-weight: 500;
+            text-align: center;
+        }
+
         .input-bar { 
             background: transparent; 
             border: none; 
@@ -188,78 +242,31 @@
             scrollbar-width: none; 
             -ms-overflow-style: none; 
         }
-        .input-bar textarea::-webkit-scrollbar { display: none; }
+        .input-bar textarea::-webkit-scrollbar {
+            display: none; 
+        }
         
-        /* --- NEW: RECORDING BAR UI --- */
-        .recording-bar {
-            display: none; /* Hidden by default */
-            align-items: center; 
-            justify-content: space-between; 
-            padding: 8px 12px 8px 20px; 
-            width: 100%;
-            height: 60px;
-            background: #f3f4f6;
-        }
-        .recording-bar.active { display: flex; }
-        
-        .delete-record-btn {
-            color: #ff4d4d; font-size: 20px; cursor: pointer; padding: 10px; transition: 0.2s;
-        }
-        .delete-record-btn:active { transform: scale(0.9); }
-
-        .recording-waveform {
-            display: flex; align-items: center; gap: 8px; flex: 1; justify-content: center;
-        }
-        .record-timer { font-size: 14px; font-weight: 600; color: #ff4d4d; width: 45px; text-align: center; }
-        
-        /* Wave animation */
-        .wave-container { display: flex; gap: 3px; align-items: center; height: 24px; }
-        .wave-bar { width: 3px; height: 8px; background: #ff4d4d; border-radius: 2px; animation: wave 1s infinite ease-in-out; }
-        .wave-bar:nth-child(1) { animation-delay: 0.0s; }
-        .wave-bar:nth-child(2) { animation-delay: 0.1s; }
-        .wave-bar:nth-child(3) { animation-delay: 0.2s; }
-        .wave-bar:nth-child(4) { animation-delay: 0.3s; }
-        .wave-bar:nth-child(5) { animation-delay: 0.4s; }
-        .wave-bar:nth-child(6) { animation-delay: 0.5s; }
-        @keyframes wave { 0%, 100% { height: 8px; } 50% { height: 20px; } }
-
-        /* --- BUTTONS --- */
-        .actions-right { display:flex; align-items:center; height: 44px; position: relative; }
-        #mike-btn, .send-btn { 
-            width: 44px; height: 44px; border-radius: 50%; display: flex; justify-content: center; align-items: center; 
-            cursor: pointer; border: none; flex-shrink: 0; transition: 0.2s; touch-action: none;
-        }
-        #mike-btn { font-size: 20px; color: #555; background: transparent; z-index: 10; position: relative; }
-        #mike-btn.recording-active { 
-            background-color: #ff4d4d !important; color: #fff !important; transform: scale(1.2); 
-            box-shadow: 0 4px 15px rgba(255, 77, 77, 0.4); 
-        }
+        #mike-btn, .send-btn { width: 44px; height: 44px; border-radius: 50%; display: flex; justify-content: center; align-items: center; cursor: pointer; border: none; flex-shrink: 0; }
+        #mike-btn { font-size: 20px; color: #555; background: transparent; }
         .send-btn { background: #000; color: #fff; margin-left: 10px; font-size: 18px; }
-        
-        /* --- LOCK SLIDER INDICATOR --- */
-        .lock-indicator {
-            position: absolute; bottom: 60px; right: 0; width: 44px; display: flex; flex-direction: column; align-items: center; gap: 8px; 
-            opacity: 0; transform: translateY(20px); transition: 0.3s; pointer-events: none;
-        }
-        .lock-indicator.show { opacity: 1; transform: translateY(0); }
-        .lock-icon-box { background: #fff; border: 1px solid #ddd; width: 36px; height: 36px; border-radius: 50%; display: flex; justify-content: center; align-items: center; color: #555; box-shadow: 0 4px 10px rgba(0,0,0,0.1); font-size: 14px;}
-        .lock-arrow { color: #999; font-size: 12px; animation: bounceUp 1s infinite; }
-        @keyframes bounceUp { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
-
-        /* --- VOICE MESSAGE BUBBLE IN CHAT --- */
-        .voice-bubble {
-            display: flex; align-items: center; gap: 12px; background: #e5e7eb; padding: 8px 16px; border-radius: 20px; min-width: 220px;
-        }
-        .voice-play-btn {
-            width: 36px; height: 36px; border-radius: 50%; background: #1a73e8; color: #fff; display: flex; justify-content: center; align-items: center; cursor: pointer; font-size: 14px; border: none; box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        }
-        .voice-waveform-img { 
-            flex: 1; height: 20px; background: repeating-linear-gradient(90deg, #999, #999 2px, transparent 2px, transparent 5px); opacity: 0.6; border-radius: 2px;
-        }
-        .voice-duration-text { font-size: 12px; color: #555; font-weight: 500; }
+        #mike-btn.recording { background-color: #000 !important; color: #fff !important; }
+        .stop-square { width: 12px; height: 12px; background: #fff; border-radius: 2px; }
 
         pre { 
-            background: #1e1e1e; color: #d4d4d4; padding: 45px 15px 15px 15px; border-radius: 12px; margin: 15px 0; overflow-x: auto; position: relative; font-family: 'Consolas', monospace; font-size: 14px; width: 100%; max-width: 100%; border: 1px solid #333; white-space: pre-wrap; word-break: break-word; 
+            background: #1e1e1e; 
+            color: #d4d4d4; 
+            padding: 45px 15px 15px 15px; 
+            border-radius: 12px; 
+            margin: 15px 0; 
+            overflow-x: auto; 
+            position: relative; 
+            font-family: 'Consolas', monospace; 
+            font-size: 14px; 
+            width: 100%; 
+            max-width: 100%;
+            border: 1px solid #333;
+            white-space: pre-wrap; 
+            word-break: break-word;
         }
         code { font-family: 'Consolas', monospace; }
         .copy-code-btn { position: absolute; top: 10px; right: 12px; background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.2); padding: 5px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; z-index: 10; }
@@ -270,87 +277,182 @@
         
         .new-chat-btn { width: 100%; padding: 14px; background: #000; color: #fff; border: none; border-radius: 12px; cursor: pointer; font-weight: 600; }
 
-        .ai-link { color: #1a73e8 !important; text-decoration: underline !important; word-break: break-word !important; cursor: pointer !important; pointer-events: auto !important; font-weight: 600 !important; }
+        .ai-link {
+            color: #1a73e8 !important;
+            text-decoration: underline !important;
+            word-break: break-word !important;
+            cursor: pointer !important;
+            pointer-events: auto !important; 
+            font-weight: 600 !important;
+        }
+        .ai-link:hover {
+            color: #1557b0 !important;
+        }
 
         .action-bar { display: flex; gap: 15px; margin-top: 5px; padding: 0 10px; }
         .user-action-bar { justify-content: flex-end; }
         .ai-action-bar { justify-content: flex-start; }
-        .action-btn { background: transparent; border: none; color: #aaa; cursor: pointer; font-size: 16px; transition: 0.2s; padding: 5px; }
+        .action-btn { background: transparent; border: none; color: #aaa; cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; transition: 0.2s; padding: 5px; }
+        .action-btn:hover { color: #333; }
 
-        /* --- ATTACHMENT MENU (LOCKED) --- */
         .attachment-menu {
-            position: fixed; bottom: -350px; left: 0; width: 100%; background: #fff; border-top-left-radius: 20px; border-top-right-radius: 20px; box-shadow: 0 -5px 25px rgba(0,0,0,0.15); padding: 0 0 40px 0; transition: bottom 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); z-index: 2000;
+            position: fixed;
+            bottom: -350px;
+            left: 0;
+            width: 100%;
+            background: #fff;
+            border-top-left-radius: 20px;
+            border-top-right-radius: 20px;
+            box-shadow: 0 -5px 25px rgba(0,0,0,0.15);
+            padding: 0 0 40px 0; 
+            transition: bottom 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            z-index: 2000;
         }
-        .attachment-menu.active { bottom: 0; }
-        .attachment-menu-header { display: flex; justify-content: flex-start; align-items: center; padding: 15px 20px 10px 20px; position: relative; }
-        .attachment-menu-header i.fa-times { font-size: 20px; color: #555; cursor: pointer; padding: 5px; }
-        .attachment-menu::before { content: ''; position: absolute; top: 10px; left: 50%; transform: translateX(-50%); width: 40px; height: 4px; background: #ddd; border-radius: 4px; }
-        
-        .attachment-options-container { display: flex; justify-content: space-around; padding: 0 20px; margin-top: 10px; }
-
-        /* THE LOCK CSS FOR MENU ITEMS */
-        .locked-option { opacity: 0.45; pointer-events: none; filter: grayscale(100%); }
-        .attachment-option { display: flex; flex-direction: column; align-items: center; gap: 12px; width: 30%; position: relative; }
-        .attachment-option .icon-box { width: 85px; height: 85px; border: 1px solid #eee; border-radius: 20px; display: flex; justify-content: center; align-items: center; font-size: 32px; color: #444; background: #fdfdfd; box-shadow: 0 2px 6px rgba(0,0,0,0.04); }
-        .attachment-option span { font-size: 14px; color: #333; font-weight: 500; }
-        
-        .lock-badge-menu { position: absolute; top: -5px; right: 10px; background: #ff4d4d; color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; justify-content: center; align-items: center; font-size: 11px; border: 2px solid #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
-        
-        .attachment-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.3); display: none; z-index: 1999; }
-        .attachment-overlay.active { display: block; }
-
-        .hidden-input { display: none; }
-
-        .toast-msg {
-            visibility: hidden; min-width: 250px; background-color: #323232; color: #fff; text-align: center; border-radius: 8px; padding: 12px 20px; position: fixed; z-index: 3000; left: 50%; bottom: 30px; transform: translateX(-50%); font-size: 14px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); transition: 0.3s; opacity: 0; font-weight: 500;
+        .attachment-menu.active {
+            bottom: 0;
         }
-        .toast-msg.show { visibility: visible; opacity: 1; bottom: 80px; }
         
-        .stop-square { width: 12px; height: 12px; background: #fff; border-radius: 2px; }
+        .attachment-menu-header {
+            display: flex;
+            justify-content: flex-start; 
+            align-items: center;
+            padding: 15px 20px 10px 20px; 
+            position: relative;
+        }
+        
+        .attachment-menu-header i.fa-times {
+            font-size: 20px;
+            color: #555;
+            cursor: pointer;
+            padding: 5px; 
+        }
+        
+        .attachment-menu::before {
+            content: '';
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 40px;
+            height: 4px;
+            background: #ddd;
+            border-radius: 4px;
+        }
+        
+        .attachment-options-container {
+            display: flex;
+            justify-content: space-around;
+            padding: 0 20px;
+            margin-top: 10px; 
+        }
+
+        .attachment-option {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px; 
+            cursor: pointer;
+            width: 30%; 
+        }
+        .attachment-option .icon-box {
+            width: 85px; 
+            height: 85px;
+            border: 1px solid #eee;
+            border-radius: 20px; 
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 32px; 
+            color: #444;
+            background: #fdfdfd;
+            transition: 0.2s;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.04); 
+        }
+        .attachment-option:active .icon-box {
+            background: #eee;
+            transform: scale(0.95);
+        }
+        .attachment-option span {
+            font-size: 14px; 
+            color: #333;
+            font-weight: 500;
+        }
+        
+        .attachment-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.3);
+            display: none;
+            z-index: 1999;
+        }
+        .attachment-overlay.active {
+            display: block;
+        }
+        .hidden-input {
+            display: none;
+        }
+
+        /* --- NEW VOICE AND LOCK UI (ADDED EXTERNALLY, DOES NOT TOUCH BASE CSS) --- */
+        .locked-attachment { opacity: 0.5; pointer-events: none; position: relative; }
+        .lock-badge { position: absolute; top: -5px; right: 5px; background: #ff4d4d; color: #fff; border-radius: 50%; width: 22px; height: 22px; display: flex; justify-content: center; align-items: center; font-size: 10px; border: 2px solid #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+        
+        .recording-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: #f3f4f6; z-index: 20; display: none; align-items: center; justify-content: space-between; padding: 0 15px;
+        }
+        .wave-container { display: flex; gap: 4px; align-items: center; height: 24px; }
+        .wave-bar { width: 3px; height: 8px; background: #ff4d4d; border-radius: 2px; animation: wave 1s infinite ease-in-out; }
+        @keyframes wave { 0%, 100% { height: 8px; } 50% { height: 20px; } }
+        
+        .lock-indicator {
+            position: absolute; right: 12px; bottom: 60px; display: none; flex-direction: column; align-items: center;
+            background: #fff; padding: 10px; border-radius: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); z-index: 30; pointer-events: none;
+        }
+        @keyframes bounceUp { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
     </style>
 </head>
 <body onclick="hideMsgMenu()">
 
     <div class="overlay" id="overlay" onclick="toggleSidebar()"></div>
-    
-    <!-- Toast & Action Overlays -->
     <div class="attachment-overlay" id="attachment-overlay" onclick="toggleAttachmentMenu()"></div>
-    <div id="toast" class="toast-msg">Action not allowed in Conversation Mode</div>
 
-    <!-- Message Actions Menu -->
     <div id="msg-menu" class="msg-menu">
         <button id="copy-btn-ui" onclick="copyMsg()"><i class="fas fa-copy"></i> Copy</button>
+        <button id="edit-btn-ui" onclick="editMsg()"><i class="fas fa-pen"></i> Edit</button>
         <button id="delete-btn-ui" onclick="deleteSelectedMsg()" style="color:red;"><i class="fas fa-trash"></i> Delete</button>
     </div>
 
-    <!-- ATTACHMENT MENU (LOCKED) -->
+    <!-- ATTACHMENT MENU (WITH LOCKS ADDED) -->
     <div class="attachment-menu" id="attachment-menu">
         <div class="attachment-menu-header">
              <i class="fas fa-times" onclick="toggleAttachmentMenu(event)"></i>
         </div>
-        <div class="attachment-options-container" onclick="showToast('Attachments are locked in Conversation Mode 🔒')">
-            <div class="attachment-option locked-option">
-                <div class="lock-badge-menu"><i class="fas fa-lock"></i></div>
+        <div class="attachment-options-container">
+            <div class="attachment-option locked-attachment">
+                <div class="lock-badge"><i class="fas fa-lock"></i></div>
                 <div class="icon-box"><i class="fas fa-camera"></i></div>
                 <span>Camera</span>
             </div>
-            <div class="attachment-option locked-option">
-                <div class="lock-badge-menu"><i class="fas fa-lock"></i></div>
+            <div class="attachment-option locked-attachment">
+                <div class="lock-badge"><i class="fas fa-lock"></i></div>
                 <div class="icon-box"><i class="fas fa-image"></i></div>
                 <span>Photos</span>
             </div>
-            <div class="attachment-option locked-option">
-                <div class="lock-badge-menu"><i class="fas fa-lock"></i></div>
+            <div class="attachment-option locked-attachment">
+                <div class="lock-badge"><i class="fas fa-lock"></i></div>
                 <div class="icon-box"><i class="fas fa-file-alt"></i></div>
                 <span>Files</span>
             </div>
         </div>
     </div>
 
+    <input type="file" id="camera-input" class="hidden-input" accept="image/*" capture onchange="handleFileSelect(event)">
+    <input type="file" id="gallery-input" class="hidden-input" accept="image/*" onchange="handleFileSelect(event)">
+    <input type="file" id="file-input" class="hidden-input" accept=".pdf,.doc,.docx,.txt" onchange="handleFileSelect(event)">
+
     <!-- Hidden global audio element for playback -->
     <audio id="global-audio-player" style="display: none;"></audio>
 
-    <!-- Sidebar -->
     <div class="sidebar" id="sidebar">
         <div class="sidebar-content">
             <div class="sidebar-header"><h2>Recent Chats</h2><i class="fas fa-times" onclick="toggleSidebar()" style="cursor:pointer; color:#999;"></i></div>
@@ -359,7 +461,6 @@
         <div style="padding: 20px;"><button class="new-chat-btn" onclick="createNewChat()"><i class="fas fa-plus"></i> New Chat</button></div>
     </div>
 
-    <!-- Main Wrapper -->
     <div class="wrapper">
         <header>
             <div class="header-left">
@@ -369,7 +470,7 @@
                     <div class="menu-line line-3"></div>
                 </div>
             </div>
-            <div class="header-center"><div class="model-name">DATEX AI Model</div><div class="version-pill">Conversation Mode</div></div>
+            <div class="header-center"><div class="model-name">DATEX AI Model</div><div class="version-pill">Fast 1.5</div></div>
             <div class="header-right"><div class="logo-container"><img src="logo.jpg.jpg" alt="Logo"></div></div>
         </header>
 
@@ -382,368 +483,166 @@
                 
                 <div class="chat-input-container">
                     
-                    <!-- THE RECORDING BAR (Hidden initially) -->
-                    <div id="recording-bar" class="recording-bar">
-                        <i class="fas fa-trash delete-record-btn" onclick="cancelVoiceRecording()"></i>
-                        <div class="recording-waveform">
-                            <span class="record-timer" id="record-timer">00:00</span>
+                    <!-- NEW RECORDING OVERLAY (Hides over the input bar when active) -->
+                    <div id="recording-overlay" class="recording-overlay">
+                        <i class="fas fa-trash" style="color: #ff4d4d; font-size: 20px; padding: 10px; cursor: pointer;" onclick="cancelVoiceRecording()"></i>
+                        <div style="display: flex; align-items: center; gap: 8px;">
                             <div class="wave-container">
-                                <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
-                                <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
+                                <div class="wave-bar"></div><div class="wave-bar" style="animation-delay:0.1s"></div><div class="wave-bar" style="animation-delay:0.2s"></div><div class="wave-bar" style="animation-delay:0.3s"></div><div class="wave-bar" style="animation-delay:0.4s"></div>
                             </div>
+                            <span id="record-timer" style="font-size: 14px; font-weight: bold; color: #ff4d4d; width: 45px; text-align: center;">00:00</span>
                         </div>
-                        <button class="send-btn" onclick="stopAndSendVoiceRecording()" style="background: #1a73e8;"><i class="fas fa-arrow-up"></i></button>
+                        <button class="send-btn" onclick="stopAndSendVoiceRecording()" style="background: #1a73e8; width: 38px; height: 38px; font-size: 16px; margin: 0;"><i class="fas fa-arrow-up"></i></button>
                     </div>
 
-                    <!-- THE STANDARD INPUT BAR -->
+                    <div id="attachment-preview" class="attachment-preview">
+                        <img id="attachment-img-preview" src="">
+                        <div id="attachment-file-preview" style="display: none; flex-direction: column; align-items: center; justify-content: center; height: 100%; width: 100%;">
+                            <i id="attachment-icon" class="fas fa-file-alt file-icon-placeholder"></i>
+                            <span id="attachment-name" class="file-name-placeholder"></span>
+                        </div>
+                        <div class="remove-btn" onclick="removeAttachment()"><i class="fas fa-times"></i></div>
+                    </div>
+
+                    <!-- YOUR ORIGINAL EXACT BASE INPUT BAR -->
                     <div class="input-bar" id="standard-input-bar">
                         <div style="height: 44px; display: flex; align-items: center; margin-right: 12px;">
                             <i class="fas fa-plus" onclick="toggleAttachmentMenu(event)" style="color:#777; cursor:pointer; font-size: 18px;"></i>
                         </div>
                         <textarea id="user-input" placeholder="Ask DATEX AI..." rows="1" oninput="autoGrow(this)"></textarea>
-                        
-                        <div class="actions-right">
-                            <div id="lock-indicator" class="lock-indicator">
-                                <div class="lock-icon-box"><i class="fas fa-lock"></i></div>
-                                <i class="fas fa-chevron-up lock-arrow"></i>
-                            </div>
+                        <div class="actions-right" style="display:flex; align-items:center; height: 44px;">
                             <div id="mike-btn"><i class="fas fa-microphone"></i></div>
-                            <button class="send-btn" id="send-btn" onclick="handleSendClick()"><i class="fas fa-arrow-up"></i></button>
+                            <button class="send-btn" onclick="handleSendClick()"><i class="fas fa-arrow-up"></i></button>
                         </div>
+                    </div>
+                    
+                    <!-- NEW LOCK INDICATOR POPUP -->
+                    <div id="lock-indicator" class="lock-indicator">
+                        <i class="fas fa-lock" style="color: #555; margin-bottom: 8px; font-size: 16px;"></i>
+                        <i class="fas fa-chevron-up" style="color: #999; font-size: 14px; animation: bounceUp 1s infinite;"></i>
                     </div>
 
                 </div>
+
             </div>
         </div>
     </div>
 
     <script>
-    function showToast(message) {
-        const toast = document.getElementById("toast");
-        toast.innerText = message;
-        toast.classList.add("show");
-        setTimeout(function(){ toast.classList.remove("show"); }, 3000);
-    }
-
-    const dbName = "DATEX_AI_DB";
-    const storeName = "ChatHistory";
-    let db;
-
-    const request = indexedDB.open(dbName, 1);
-    request.onupgradeneeded = (e) => { db = e.target.result; if (!db.objectStoreNames.contains(storeName)) { db.createObjectStore(storeName); } };
-    request.onsuccess = (e) => { db = e.target.result; initApp(); };
-
-    function saveHistoryToDB() {
-        if (!db) return; const tx = db.transaction(storeName, "readwrite");
-        tx.objectStore(storeName).put(chatHistory, "full_history");
-    }
-
-    function loadHistoryFromDB() {
-        return new Promise((resolve) => {
-            if (!db) return resolve([]);
-            const request = db.transaction(storeName, "readonly").objectStore(storeName).get("full_history");
-            request.onsuccess = () => resolve(request.result || []);
-            request.onerror = () => resolve([]);
-        });
-    }
-
-    let chatHistory = [];
-    async function initApp() {
-        chatHistory = await loadHistoryFromDB();
-        renderChatList();
-        if(chatHistory.length === 0) createNewChat();
-    }
-
     document.addEventListener('contextmenu', function(e) {
-        if (e.target.tagName !== 'TEXTAREA' && e.target.tagName !== 'INPUT') { e.preventDefault(); }
+        if (e.target.tagName !== 'TEXTAREA' && e.target.tagName !== 'INPUT') {
+            e.preventDefault();
+        }
     });
 
     if (window.visualViewport) {
         const resizeHandler = () => {
-            document.body.style.height = window.visualViewport.height + 'px'; window.scrollTo(0, 0);
-            setTimeout(() => { document.getElementById('chat-container').scrollTop = document.getElementById('chat-container').scrollHeight; }, 50);
+            document.body.style.height = window.visualViewport.height + 'px';
+            window.scrollTo(0, 0);
         };
-        window.visualViewport.addEventListener('resize', resizeHandler); resizeHandler();
+        window.visualViewport.addEventListener('resize', resizeHandler);
+        resizeHandler();
     }
 
-    document.getElementById('user-input').addEventListener('focus', () => {
-        setTimeout(() => { document.getElementById('chat-container').scrollTop = document.getElementById('chat-container').scrollHeight; }, 300);
-    });
-
-    // GROQ API KEY
     const GROQ_API_KEY = "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"; 
 
+    let chatHistory = JSON.parse(localStorage.getItem('datex_full_history')) || [];
     let isNewSession = true;
     let selectedMsgRow = null;
     let activeChatIndex = -1;
+    let editingMsgIdx = -1; 
+    
     let isGenerating = false;
+    let stopGenerationFlag = false;
     let abortController = null;
     let currentAiRow = null;
+    let currentAttachmentData = null;
 
     document.getElementById('chat-container').addEventListener('scroll', () => {
-        if(document.getElementById('msg-menu').style.display === 'flex') hideMsgMenu();
+        if(document.getElementById('msg-menu').style.display === 'flex') {
+            hideMsgMenu();
+        }
     });
+    window.addEventListener('scroll', hideMsgMenu);
 
     function toggleAttachmentMenu(e) {
         if(e) e.stopPropagation();
-        document.getElementById('attachment-menu').classList.toggle('active');
-        document.getElementById('attachment-overlay').classList.toggle('active');
+        const menu = document.getElementById('attachment-menu');
+        const overlay = document.getElementById('attachment-overlay');
+        if (menu.classList.contains('active')) {
+            menu.classList.remove('active');
+            overlay.classList.remove('active');
+        } else {
+            menu.classList.add('active');
+            overlay.classList.add('active');
+        }
+    }
+
+    function triggerCamera() { document.getElementById('camera-input').click(); toggleAttachmentMenu(); }
+    function triggerGallery() { document.getElementById('gallery-input').click(); toggleAttachmentMenu(); }
+    function triggerFiles() { document.getElementById('file-input').click(); toggleAttachmentMenu(); }
+
+    function handleFileSelect(event) {
+        const file = event.target.files[0];
+        if(file) {
+            if (file.type.startsWith('video/')) {
+                alert("Videos are not allowed! Please select a valid photo or document.");
+                event.target.value = '';
+                return;
+            }
+
+            const previewContainer = document.getElementById('attachment-preview');
+            const imgPreview = document.getElementById('attachment-img-preview');
+            const filePreview = document.getElementById('attachment-file-preview');
+            const fileNameSpan = document.getElementById('attachment-name');
+
+            if (file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const img = new Image();
+                    img.onload = function() {
+                        const canvas = document.createElement('canvas');
+                        const MAX_WIDTH = 300;
+                        const scaleSize = MAX_WIDTH / img.width;
+                        canvas.width = MAX_WIDTH;
+                        canvas.height = img.height * scaleSize;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                        const compressedBase64 = canvas.toDataURL('image/jpeg', 0.6);
+
+                        currentAttachmentData = { type: 'image', name: file.name, data: compressedBase64 };
+                        imgPreview.src = compressedBase64;
+                        imgPreview.style.display = 'block';
+                        filePreview.style.display = 'none';
+                        previewContainer.style.display = 'flex';
+                    }
+                    img.src = e.target.result;
+                }
+                reader.readAsDataURL(file);
+            } else {
+                currentAttachmentData = { type: 'file', name: file.name, data: null };
+                imgPreview.style.display = 'none';
+                filePreview.style.display = 'flex';
+                let shortName = file.name.length > 12 ? file.name.substring(0, 8) + ".." + file.name.substring(file.name.lastIndexOf('.')) : file.name;
+                fileNameSpan.innerText = shortName;
+                previewContainer.style.display = 'flex';
+            }
+        }
+        event.target.value = '';
+    }
+
+    function removeAttachment() {
+        currentAttachmentData = null;
+        document.getElementById('attachment-preview').style.display = 'none';
+        document.getElementById('attachment-img-preview').src = "";
     }
 
     function autoGrow(element) {
         element.style.height = "44px"; 
-        if (element.scrollHeight > 44) element.style.height = (element.scrollHeight) + "px";
-        
-        // Hide mic and show send button logic based on text
-        const micBtn = document.getElementById('mike-btn');
-        const sendBtn = document.getElementById('send-btn');
-        if(element.value.trim().length > 0) {
-            micBtn.style.display = 'none';
-            sendBtn.style.display = 'flex';
-        } else {
-            micBtn.style.display = 'flex';
-            if(!isGenerating) sendBtn.style.display = 'none';
+        if (element.scrollHeight > 44) {
+            element.style.height = (element.scrollHeight) + "px";
         }
     }
-
-    // Initialize UI correctly
-    document.getElementById('send-btn').style.display = 'none';
-    document.getElementById('user-input').addEventListener('input', function() { autoGrow(this); });
-
-    // ==========================================
-    // VOICE RECORDING ENGINE (SWIPE UP TO LOCK)
-    // ==========================================
-    let mediaRecorder = null;
-    let audioChunks = [];
-    let isRecordingVoice = false;
-    let isMicLocked = false;
-    let startY = 0;
-    let isDragging = false;
-    let timerInterval = null;
-    let recordSeconds = 0;
-
-    const micBtn = document.getElementById('mike-btn');
-    const lockIndicator = document.getElementById('lock-indicator');
-    const standardInputBar = document.getElementById('standard-input-bar');
-    const recordingBar = document.getElementById('recording-bar');
-    const timerDisplay = document.getElementById('record-timer');
-
-    async function startVoiceRecording() {
-        if (isGenerating) { showToast("Wait for AI to finish responding."); return; }
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            mediaRecorder = new MediaRecorder(stream);
-            audioChunks = [];
-            
-            mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
-            mediaRecorder.onstop = () => {
-                if (isRecordingVoice) { // Not cancelled
-                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-                    processVoiceBlob(audioBlob);
-                }
-                stream.getTracks().forEach(track => track.stop()); // Stop mic usage
-            };
-            
-            mediaRecorder.start();
-            isRecordingVoice = true;
-            micBtn.classList.add('recording-active');
-            
-            // Start Timer
-            recordSeconds = 0;
-            timerDisplay.innerText = "00:00";
-            timerInterval = setInterval(() => {
-                recordSeconds++;
-                let mins = Math.floor(recordSeconds / 60).toString().padStart(2, '0');
-                let secs = (recordSeconds % 60).toString().padStart(2, '0');
-                timerDisplay.innerText = `${mins}:${secs}`;
-            }, 1000);
-
-        } catch (err) {
-            showToast("Microphone access denied!");
-            resetRecordingUI();
-        }
-    }
-
-    // Touch logic for Drag to Lock
-    micBtn.addEventListener('touchstart', (e) => {
-        if(isGenerating) return;
-        e.preventDefault(); 
-        startY = e.touches[0].clientY;
-        isDragging = true;
-        lockIndicator.classList.add('show');
-        startVoiceRecording();
-    }, {passive: false});
-
-    micBtn.addEventListener('touchmove', (e) => {
-        if (!isDragging || isMicLocked || !isRecordingVoice) return;
-        let currentY = e.touches[0].clientY;
-        if (startY - currentY > 50) { // Dragged up by 50px
-            isMicLocked = true;
-            lockIndicator.classList.remove('show');
-            standardInputBar.style.display = 'none';
-            recordingBar.classList.add('active');
-        }
-    }, {passive: false});
-
-    micBtn.addEventListener('touchend', (e) => {
-        if (!isDragging) return;
-        isDragging = false;
-        lockIndicator.classList.remove('show');
-        
-        if (!isMicLocked && isRecordingVoice) {
-            // User released before locking -> Stop and send!
-            if (mediaRecorder && mediaRecorder.state === 'recording') {
-                mediaRecorder.stop();
-            }
-        }
-    });
-
-    // Mouse logic for Desktop Testing
-    micBtn.addEventListener('mousedown', (e) => {
-        if(isGenerating || ('ontouchstart' in window)) return;
-        startY = e.clientY; isDragging = true; lockIndicator.classList.add('show'); startVoiceRecording();
-    });
-    window.addEventListener('mousemove', (e) => {
-        if (!isDragging || isMicLocked || !isRecordingVoice || ('ontouchstart' in window)) return;
-        if (startY - e.clientY > 50) {
-            isMicLocked = true; lockIndicator.classList.remove('show');
-            standardInputBar.style.display = 'none'; recordingBar.classList.add('active');
-        }
-    });
-    window.addEventListener('mouseup', (e) => {
-        if (!isDragging || ('ontouchstart' in window)) return;
-        isDragging = false; lockIndicator.classList.remove('show');
-        if (!isMicLocked && isRecordingVoice) { if (mediaRecorder && mediaRecorder.state === 'recording') mediaRecorder.stop(); }
-    });
-
-    // UI Buttons
-    function cancelVoiceRecording() {
-        if (mediaRecorder && mediaRecorder.state === 'recording') {
-            isRecordingVoice = false; // Mark cancelled
-            mediaRecorder.stop();
-        }
-        resetRecordingUI();
-    }
-
-    function stopAndSendVoiceRecording() {
-        if (mediaRecorder && mediaRecorder.state === 'recording') {
-            mediaRecorder.stop(); // Triggers onstop, which calls processVoiceBlob
-        }
-        resetRecordingUI();
-    }
-
-    function resetRecordingUI() {
-        isRecordingVoice = false;
-        isMicLocked = false;
-        isDragging = false;
-        clearInterval(timerInterval);
-        
-        micBtn.classList.remove('recording-active');
-        lockIndicator.classList.remove('show');
-        recordingBar.classList.remove('active');
-        standardInputBar.style.display = 'flex';
-    }
-
-    // --- Audio Process & AI Call ---
-    async function processVoiceBlob(blob) {
-        if (recordSeconds < 1) { showToast("Message too short!"); return; } // Prevent 0s glitch
-        
-        resetRecordingUI();
-        
-        // Convert Blob to Base64 for UI storage
-        const reader = new FileReader();
-        reader.readAsDataURL(blob);
-        reader.onloadend = async () => {
-            const base64Audio = reader.result;
-            const displayTime = timerDisplay.innerText;
-            
-            // Add UI Bubble for User
-            if (isNewSession) { chatHistory.push({ title: "Voice Note", messages: [] }); activeChatIndex = chatHistory.length - 1; isNewSession = false; }
-            addUserVoiceBubbleUI(base64Audio, displayTime);
-            
-            // Temporary loading AI bubble
-            isGenerating = true;
-            document.getElementById('send-btn').style.display = 'flex';
-            document.getElementById('send-btn').innerHTML = '<div class="stop-square"></div>';
-            document.getElementById('mike-btn').style.display = 'none';
-            
-            const container = document.getElementById('chat-container');
-            const aiRow = document.createElement('div'); aiRow.className = 'message-row ai-row';
-            aiRow.innerHTML = `<img src="logo.jpg.jpg" class="avatar"><div class="bubble-container"><div class="bubble ai-bubble">Listening...</div></div>`;
-            container.appendChild(aiRow); currentAiRow = aiRow;
-            container.scrollTop = container.scrollHeight;
-
-            try {
-                // 1. Whisper API Transcription
-                const formData = new FormData();
-                formData.append("file", blob, "voice.webm");
-                formData.append("model", "whisper-large-v3");
-
-                const transRes = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
-                    method: "POST", headers: { "Authorization": `Bearer ${GROQ_API_KEY}` }, body: formData
-                });
-                
-                if (!transRes.ok) throw new Error("Voice recognition failed");
-                const transData = await transRes.json();
-                const textMsg = transData.text || "Hello";
-
-                // Save to DB
-                chatHistory[activeChatIndex].messages.push({ role: "user", content: textMsg, audioData: base64Audio, audioTime: displayTime });
-                saveHistoryToDB();
-
-                // 2. Chat API
-                currentAiRow.querySelector('.ai-bubble').innerText = "Thinking...";
-                await executeGroqChatAPI();
-                
-            } catch (err) {
-                currentAiRow.querySelector('.ai-bubble').innerText = "Failed to process audio. API limits or network error.";
-                resetSendButtonState();
-                addAiActions(currentAiRow, true);
-            }
-        };
-    }
-
-    // Custom Audio Player logic
-    let currentPlayingBtn = null;
-    function playAudio(btn, base64Str) {
-        const player = document.getElementById('global-audio-player');
-        if (currentPlayingBtn === btn && !player.paused) {
-            player.pause();
-            btn.innerHTML = '<i class="fas fa-play"></i>';
-            return;
-        }
-        if (currentPlayingBtn) currentPlayingBtn.innerHTML = '<i class="fas fa-play"></i>';
-        
-        player.src = base64Str;
-        player.play();
-        btn.innerHTML = '<i class="fas fa-pause"></i>';
-        currentPlayingBtn = btn;
-        
-        player.onended = () => {
-            btn.innerHTML = '<i class="fas fa-play"></i>';
-            currentPlayingBtn = null;
-        };
-    }
-
-    function addUserVoiceBubbleUI(audioData, timeStr) {
-        const container = document.getElementById('chat-container');
-        if(document.getElementById('welcome-screen')) document.getElementById('welcome-screen').remove();
-        
-        const row = document.createElement('div');
-        row.className = 'message-row user-row';
-        row.innerHTML = `
-            <div class="bubble-container">
-                <div class="bubble user-bubble voice-bubble">
-                    <button class="voice-play-btn" onclick="playAudio(this, '${audioData}')"><i class="fas fa-play"></i></button>
-                    <div class="voice-waveform-img"></div>
-                    <span class="voice-duration-text">${timeStr}</span>
-                </div>
-            </div>`;
-        container.appendChild(row);
-        container.scrollTop = container.scrollHeight;
-    }
-    // ==========================================
-
 
     window.onload = () => { 
         renderChatList(); 
@@ -765,9 +664,9 @@
     function deleteHistoryItem(event, index) {
         if(event) event.stopPropagation();
         chatHistory.splice(index, 1);
-        saveHistoryToDB();
+        localStorage.setItem('datex_full_history', JSON.stringify(chatHistory));
         renderChatList();
-        if (activeChatIndex === index) createNewChat(true); else if (activeChatIndex > index) activeChatIndex--;
+        if (activeChatIndex === index) { createNewChat(true); } else if (activeChatIndex > index) { activeChatIndex--; }
     }
 
     function loadSelectedChat(index, shouldToggleSidebar = false) {
@@ -777,12 +676,11 @@
         const container = document.getElementById('chat-container');
         container.innerHTML = "";
         chatHistory[index].messages.forEach((msg, msgIdx) => {
-            if(msg.role === "user") {
-                if(msg.audioData) addUserVoiceBubbleUI(msg.audioData, msg.audioTime || "00:05");
-                else addUserMessageToUI(msg.content, false, msgIdx);
-            } else {
-                addAiMessageToUI(msg.content, false, msgIdx);
+            if(msg.role === "user") { 
+                if(msg.audioData) addUserVoiceMessageToUI(msg.audioData, msg.audioTime, msgIdx);
+                else addUserMessageToUI(msg.content, false, msgIdx, msg.attachment); 
             }
+            else { addAiMessageToUI(msg.content, false, msgIdx); }
         });
         if(shouldToggleSidebar) toggleSidebar();
     }
@@ -803,25 +701,63 @@
         document.getElementById('overlay').classList.toggle('active');
     }
 
-    function cleanOldTags(text) {
-        if(!text) return "";
-        return text.replace(/\[System Note: User attached files previously\]\n?/g, "").trim();
+    function addUserMessageToUI(text, isTyping, msgIdx, attachment = null) {
+        const container = document.getElementById('chat-container');
+        if(document.getElementById('welcome-screen')) document.getElementById('welcome-screen').remove();
+        const row = document.createElement('div');
+        row.className = 'message-row user-row';
+        row.setAttribute('data-index', msgIdx); 
+
+        let attachmentHTML = '';
+        if (attachment) {
+            if (attachment.type === 'image') {
+                attachmentHTML = `<img src="${attachment.data}" style="width: 100%; max-width: 250px; border-radius: 12px; margin-bottom: 8px; object-fit: cover;">`;
+            } else {
+                attachmentHTML = `
+                <div style="display: flex; align-items: center; gap: 10px; background: #e5e7eb; padding: 10px 14px; border-radius: 12px; margin-bottom: 8px;">
+                    <i class="fas fa-file-pdf" style="color: #1a73e8; font-size: 24px;"></i>
+                    <span style="font-size: 13px; font-weight: 500; color: #333; max-width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${attachment.name}</span>
+                </div>`;
+            }
+        }
+
+        row.innerHTML = `<div class="bubble-container">
+                            <div class="bubble user-bubble" style="display: flex; flex-direction: column;">
+                                ${attachmentHTML}
+                                ${text ? `<span>${text}</span>` : ''}
+                            </div>
+                            <div class="action-bar user-action-bar">
+                                <button class="action-btn" onclick="openMenu(event, this)"><i class="fas fa-ellipsis-v"></i></button>
+                            </div>
+                         </div>`;
+        container.appendChild(row);
+        container.scrollTop = container.scrollHeight;
     }
 
-    function addUserMessageToUI(text, isTyping, msgIdx) {
+    // --- NEW: RENDER VOICE MESSAGE BUBBLE IN CHAT ---
+    function addUserVoiceMessageToUI(audioData, audioTime, msgIdx) {
         const container = document.getElementById('chat-container');
         if(document.getElementById('welcome-screen')) document.getElementById('welcome-screen').remove();
         
-        let cleanText = cleanOldTags(text);
-        if (cleanText) {
-            const row = document.createElement('div');
-            row.className = 'message-row user-row';
-            row.setAttribute('data-index', msgIdx); 
-            row.innerHTML = `<div class="bubble-container"><div class="bubble user-bubble"><span>${cleanText}</span></div><div class="action-bar user-action-bar"><button class="action-btn" onclick="openMenu(event, this)"><i class="fas fa-ellipsis-v"></i></button></div></div>`;
-            container.appendChild(row);
-        }
+        const row = document.createElement('div');
+        row.className = 'message-row user-row';
+        row.setAttribute('data-index', msgIdx); 
+        
+        row.innerHTML = `
+            <div class="bubble-container">
+                <div class="bubble user-bubble" style="display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 14px; background: transparent; border: 1px solid #ddd; width: 220px; border-radius: 20px;">
+                    <span style="font-size: 13px; font-weight: bold; color: #555;">${audioTime}</span>
+                    <div style="flex: 1; height: 2px; background: #999; margin: 0 5px;"></div>
+                    <button onclick="playAudio(this, '${audioData}')" style="width: 32px; height: 32px; border-radius: 50%; background: #000; color: #fff; border: none; cursor: pointer; display: flex; justify-content: center; align-items: center;"><i class="fas fa-play" style="margin-left: 2px;"></i></button>
+                </div>
+                <div class="action-bar user-action-bar">
+                    <button class="action-btn" onclick="openMenu(event, this)"><i class="fas fa-ellipsis-v"></i></button>
+                </div>
+            </div>`;
+        container.appendChild(row);
         container.scrollTop = container.scrollHeight;
     }
+    // --------------------------------------------------
 
     function addAiMessageToUI(text, isNew, msgIdx) {
         const container = document.getElementById('chat-container');
@@ -831,7 +767,13 @@
         row.innerHTML = `<img src="logo.jpg.jpg" class="avatar"><div class="bubble-container"><div class="bubble ai-bubble"></div></div>`;
         const bubble = row.querySelector('.ai-bubble');
         container.appendChild(row);
-        if(isNew) typeEffect(bubble, text, 5); else { renderStoredContent(bubble, text); addAiActions(row, false); }
+        
+        if(isNew) { 
+            typeEffect(bubble, text, 5); 
+        } else { 
+            renderStoredContent(bubble, text); 
+            addAiActions(row, false);
+        }
         container.scrollTop = container.scrollHeight;
     }
 
@@ -839,7 +781,9 @@
         if (!row) return;
         const container = row.querySelector('.bubble-container');
         if (container && !container.querySelector('.action-bar')) {
-            let html = `<div class="action-bar ai-action-bar">${isStopped ? `<button class="action-btn" onclick="regenerateMessage(this)"><i class="fas fa-redo"></i></button>` : ''}<button class="action-btn" onclick="openMenu(event, this)"><i class="fas fa-ellipsis-v"></i></button></div>`;
+            let html = '<div class="action-bar ai-action-bar">';
+            if (isStopped) { html += `<button class="action-btn" onclick="regenerateMessage(this)"><i class="fas fa-redo"></i></button>`; }
+            html += `<button class="action-btn" onclick="openMenu(event, this)"><i class="fas fa-ellipsis-v"></i></button></div>`;
             container.insertAdjacentHTML('beforeend', html);
         }
     }
@@ -848,141 +792,468 @@
         e.stopPropagation(); 
         const menu = document.getElementById('msg-menu');
         const row = btn.closest('.message-row');
+        
         if (menu.style.display === 'flex' && selectedMsgRow === row) { hideMsgMenu(); return; }
+
         selectedMsgRow = row;
-        const isUser = selectedMsgRow.classList.contains('user-row');
-        document.getElementById('delete-btn-ui').style.display = 'flex';
+        const editBtn = document.getElementById('edit-btn-ui');
+        const deleteBtn = document.getElementById('delete-btn-ui');
+        let isUser = selectedMsgRow.classList.contains('user-row');
+        
+        if(!isUser) { editBtn.style.display = 'none'; deleteBtn.style.display = 'none'; } 
+        else { editBtn.style.display = 'flex'; deleteBtn.style.display = 'flex'; }
+        
         const rect = btn.getBoundingClientRect();
-        menu.style.left = isUser ? (rect.left - 140) + 'px' : (rect.right + 5) + 'px';
-        menu.style.top = rect.top + 'px';
-        menu.style.display = 'flex';
+        let x = isUser ? (rect.left - 140) : (rect.right + 5);
+        let y = rect.top; 
+        
+        if (x < 10) x = 10;
+        if (x + 140 > window.innerWidth) x = window.innerWidth - 150;
+        if (y + 120 > window.innerHeight) y = window.innerHeight - 130; 
+        
+        menu.style.left = x + 'px'; menu.style.top = y + 'px'; menu.style.display = 'flex';
     }
 
     function hideMsgMenu() { document.getElementById('msg-menu').style.display = 'none'; }
-    function copyMsg() { if(!selectedMsgRow) return; navigator.clipboard.writeText(selectedMsgRow.querySelector('.bubble').innerText).then(hideMsgMenu); }
+    function copyMsg() { if(!selectedMsgRow) return; const text = selectedMsgRow.querySelector('.bubble').innerText; navigator.clipboard.writeText(text).then(() => { hideMsgMenu(); }); }
     
+    function editMsg() { 
+        if(!selectedMsgRow) return; 
+        editingMsgIdx = parseInt(selectedMsgRow.getAttribute('data-index')); 
+        const msgObj = chatHistory[activeChatIndex].messages[editingMsgIdx];
+        
+        const input = document.getElementById('user-input'); 
+        input.value = msgObj.content || ""; 
+        autoGrow(input); 
+        input.focus(); 
+        
+        if (msgObj.attachment) {
+            currentAttachmentData = msgObj.attachment;
+            const previewContainer = document.getElementById('attachment-preview');
+            const imgPreview = document.getElementById('attachment-img-preview');
+            const filePreview = document.getElementById('attachment-file-preview');
+            const fileNameSpan = document.getElementById('attachment-name');
+
+            if (msgObj.attachment.type === 'image') {
+                imgPreview.src = msgObj.attachment.data;
+                imgPreview.style.display = 'block';
+                filePreview.style.display = 'none';
+            } else {
+                imgPreview.style.display = 'none';
+                filePreview.style.display = 'flex';
+                let shortName = msgObj.attachment.name.length > 12 ? msgObj.attachment.name.substring(0, 8) + ".." + msgObj.attachment.name.substring(msgObj.attachment.name.lastIndexOf('.')) : msgObj.attachment.name;
+                fileNameSpan.innerText = shortName;
+            }
+            previewContainer.style.display = 'flex';
+        } else {
+            removeAttachment();
+        }
+
+        hideMsgMenu(); 
+    }
+
     function deleteSelectedMsg() {
         if(selectedMsgRow && activeChatIndex !== -1) {
             const msgIdx = parseInt(selectedMsgRow.getAttribute('data-index'));
+            const isUserRow = selectedMsgRow.classList.contains('user-row');
             chatHistory[activeChatIndex].messages.splice(msgIdx, 1);
-            if (chatHistory[activeChatIndex].messages[msgIdx]?.role === "assistant") chatHistory[activeChatIndex].messages.splice(msgIdx, 1);
-            saveHistoryToDB();
-            if (chatHistory[activeChatIndex].messages.length === 0) deleteHistoryItem(null, activeChatIndex); else loadSelectedChat(activeChatIndex, false);
+            if (isUserRow && chatHistory[activeChatIndex].messages[msgIdx] && chatHistory[activeChatIndex].messages[msgIdx].role === "assistant") {
+                chatHistory[activeChatIndex].messages.splice(msgIdx, 1);
+            }
+            localStorage.setItem('datex_full_history', JSON.stringify(chatHistory));
+            editingMsgIdx = -1; 
+            if (chatHistory[activeChatIndex].messages.length === 0) { deleteHistoryItem(null, activeChatIndex); } 
+            else { loadSelectedChat(activeChatIndex, false); }
         }
         hideMsgMenu();
     }
 
+    function copyCode(btn) { const code = btn.parentElement.querySelector('code').innerText; navigator.clipboard.writeText(code).then(() => { btn.innerText = "Copied!"; setTimeout(() => { btn.innerText = "Copy"; }, 2000); }); }
+    function escapeHTML(str) { return str.replace(/[&<>"']/g, function(m) { return { '&': '&', '<': '<', '>': '>', '"': '"', "'": ''' }[m]; }); }
+
     function formatLinksAndStyles(text) {
-        let formatted = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        let formatted = text;
+        formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
         formatted = formatted.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" class="ai-link">$1</a>');
-        return formatted.replace(/(^|\s)(https?:\/\/[^\s<()]+|www\.[^\s<()]+)/g, (m, s, url) => {
-            let cleanUrl = url.replace(/[.,;!?)]$/, '');
-            let fullUrl = cleanUrl.startsWith('www.') ? 'https://' + cleanUrl : cleanUrl;
-            return s + '<a href="' + fullUrl + '" target="_blank" class="ai-link">' + cleanUrl + '</a>';
+        let tempLinks = [];
+        formatted = formatted.replace(/<a[\s\S]*?<\/a>/g, function(match) { tempLinks.push(match); return `___A_TAG_${tempLinks.length - 1}___`; });
+        formatted = formatted.replace(/(^|\s)(https?:\/\/[^\s<()]+|www\.[^\s<()]+)/g, function(match, space, url) {
+            let cleanUrl = url.replace(/[.,;!?)]$/, ''); let diff = url.substring(cleanUrl.length); let fullUrl = cleanUrl.startsWith('www.') ? 'https://' + cleanUrl : cleanUrl;
+            return space + '<a href="' + fullUrl + '" target="_blank" class="ai-link">' + cleanUrl + '</a>' + diff;
         });
+        formatted = formatted.replace(/___A_TAG_(\d+)___/g, function(match, index) { return tempLinks[index]; });
+        return formatted;
     }
 
     function renderStoredContent(element, text) {
         let segments = text.split(/(```[\s\S]*?```)/g);
-        element.innerHTML = segments.map(seg => {
-            if (seg.startsWith("```")) {
-                let code = seg.substring(3, seg.length - 3).trim();
-                return `<pre><button class="copy-code-btn" onclick="copyCode(this)">Copy</button><code>${code.replace(/[&<>"']/g, m => ({'&':'&','<':'<','>':'>','"':'"',"'":"'"}[m]))}</code></pre>`;
+        let finalHTML = "";
+        segments.forEach(seg => {
+            if (seg.startsWith("```") && seg.endsWith("```")) {
+                let codeContent = seg.substring(3, seg.length - 3).trim();
+                finalHTML += `<pre><button class="copy-code-btn" onclick="copyCode(this)">Copy</button><code>${escapeHTML(codeContent)}</code></pre>`;
+            } else { 
+                let formattedSeg = formatLinksAndStyles(seg);
+                finalHTML += formattedSeg.replace(/\n/g, "<br>"); 
             }
-            return formatLinksAndStyles(seg).replace(/\n/g, "<br>");
-        }).join("");
-        if(window.MathJax) MathJax.typesetPromise([element]);
+        });
+        element.innerHTML = finalHTML;
+        if(window.MathJax) { MathJax.typesetPromise([element]).catch((err) => console.log(err)); }
     }
 
     function typeEffect(element, text, speed) {
-        let i = 0; let accumulatedHTML = ""; 
+        let i = 0; let segments = text.split(/(```[\s\S]*?```)/g); let currentSeg = 0; let accumulatedHTML = ""; 
         function typeNext() {
-            if (stopGenerationFlag) { resetSendButtonState(); addAiActions(currentAiRow, true); return; }
-            if (i < text.length) {
-                accumulatedHTML += (text.charAt(i) === '\n') ? "<br>" : text.charAt(i);
-                element.innerHTML = formatLinksAndStyles(accumulatedHTML);
-                i++; setTimeout(typeNext, speed);
+            if (stopGenerationFlag) {
+                const aiMsgIdx = parseInt(currentAiRow.getAttribute('data-index'));
+                if(!isNaN(aiMsgIdx) && chatHistory[activeChatIndex].messages[aiMsgIdx]) { chatHistory[activeChatIndex].messages[aiMsgIdx].content = element.innerHTML; localStorage.setItem('datex_full_history', JSON.stringify(chatHistory)); }
+                resetSendButton(); addAiActions(currentAiRow, true); return;
+            }
+            if (currentSeg < segments.length) {
+                let seg = segments[currentSeg];
+                if (seg.startsWith("```") && seg.endsWith("```")) {
+                    let codeContent = seg.substring(3, seg.length - 3).trim();
+                    accumulatedHTML += `<pre><button class="copy-code-btn" onclick="copyCode(this)">Copy</button><code>${escapeHTML(codeContent)}</code></pre>`;
+                    element.innerHTML = accumulatedHTML; currentSeg++; setTimeout(typeNext, speed);
+                } else {
+                    let formattedSeg = formatLinksAndStyles(seg);
+                    if (i < formattedSeg.length) {
+                        if (formattedSeg.charAt(i) === '<') { let tagEnd = formattedSeg.indexOf('>', i); if (tagEnd !== -1) { accumulatedHTML += formattedSeg.substring(i, tagEnd + 1); i = tagEnd + 1; } else { accumulatedHTML += '<'; i++; } } 
+                        else { accumulatedHTML += (formattedSeg.charAt(i) === '\n') ? "<br>" : formattedSeg.charAt(i); i++; }
+                        element.innerHTML = accumulatedHTML; setTimeout(typeNext, speed);
+                    } else { i = 0; currentSeg++; setTimeout(typeNext, speed); }
+                }
                 document.getElementById('chat-container').scrollTop = document.getElementById('chat-container').scrollHeight;
-            } else { renderStoredContent(element, text); resetSendButtonState(); addAiActions(currentAiRow, false); }
+            } else {
+                renderStoredContent(element, text); resetSendButton(); addAiActions(currentAiRow, false);
+            }
         }
         typeNext();
     }
 
-    function handleSendClick() { if (isGenerating) stopGeneration(); else handleNormalTextSend(); }
-    function stopGeneration() { stopGenerationFlag = true; if (abortController) abortController.abort(); resetSendButtonState(); }
+    function handleSendClick() { if (isGenerating) { stopGeneration(); } else { callDatexAPI(); } }
+    function stopGeneration() { stopGenerationFlag = true; if (abortController) { abortController.abort(); } resetSendButton(); if (currentAiRow) { addAiActions(currentAiRow, true); } }
+    function resetSendButton() { isGenerating = false; const sendBtn = document.querySelector('.send-btn'); if(sendBtn) { sendBtn.innerHTML = '<i class="fas fa-arrow-up"></i>'; } }
     
-    function resetSendButtonState() { 
-        isGenerating = false; 
-        const inputVal = document.getElementById('user-input').value.trim();
-        if(inputVal.length > 0) {
-            document.querySelector('.send-btn').innerHTML = '<i class="fas fa-arrow-up"></i>'; 
+    function regenerateMessage(btn) {
+        const row = btn.closest('.ai-row'); const indexAttr = row.getAttribute('data-index');
+        if (indexAttr) { const msgIdx = parseInt(indexAttr); if (chatHistory[activeChatIndex].messages[msgIdx]) { chatHistory[activeChatIndex].messages.splice(msgIdx, 1); localStorage.setItem('datex_full_history', JSON.stringify(chatHistory)); } }
+        row.remove(); callDatexAPI(true);
+    }
+
+    // ==========================================
+    // BRAND NEW ADVANCED SWIPE-TO-LOCK VOICE ENGINE
+    // ==========================================
+    let mediaRecorder = null;
+    let audioChunks = [];
+    let voiceTimerInterval = null;
+    let voiceSeconds = 0;
+    let isVoiceRecording = false;
+    let isMicLocked = false;
+    let isDragging = false;
+    let startY = 0;
+
+    const micBtn = document.getElementById('mike-btn');
+    const recordingOverlay = document.getElementById('recording-overlay');
+    const lockIndicator = document.getElementById('lock-indicator');
+    const recordTimerSpan = document.getElementById('record-timer');
+    const standardInputBar = document.getElementById('standard-input-bar');
+
+    micBtn.addEventListener('touchstart', async (e) => {
+        if(isGenerating) return;
+        e.preventDefault();
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            mediaRecorder = new MediaRecorder(stream);
+            audioChunks = [];
+            mediaRecorder.ondataavailable = event => { if(event.data.size > 0) audioChunks.push(event.data); };
+            mediaRecorder.onstop = () => {
+                if(isVoiceRecording) {
+                    const blob = new Blob(audioChunks, { type: 'audio/webm' });
+                    processVoiceBlob(blob);
+                }
+                stream.getTracks().forEach(t => t.stop());
+            };
+            mediaRecorder.start();
+            isVoiceRecording = true;
+            isMicLocked = false;
+            startY = e.touches[0].clientY;
+            isDragging = true;
+            
+            lockIndicator.style.display = 'flex';
+            micBtn.style.transform = 'scale(1.2)';
+            micBtn.style.color = '#ff4d4d';
+            
+            voiceSeconds = 0;
+            recordTimerSpan.innerText = "00:00";
+            voiceTimerInterval = setInterval(() => {
+                voiceSeconds++;
+                let m = Math.floor(voiceSeconds / 60).toString().padStart(2, '0');
+                let s = (voiceSeconds % 60).toString().padStart(2, '0');
+                recordTimerSpan.innerText = `${m}:${s}`;
+            }, 1000);
+        } catch(err) {
+            alert("Microphone access denied. Please allow permissions in your browser.");
+        }
+    }, {passive: false});
+
+    micBtn.addEventListener('touchmove', (e) => {
+        if(!isDragging || isMicLocked) return;
+        let currentY = e.touches[0].clientY;
+        if(startY - currentY > 50) { // User Dragged UP by 50px!
+            isMicLocked = true;
+            lockIndicator.style.display = 'none';
+            micBtn.style.transform = 'scale(1)';
+            micBtn.style.color = '#555';
+            standardInputBar.style.display = 'none'; // Hide base text input
+            recordingOverlay.style.display = 'flex'; // Show new overlay
+        }
+    }, {passive: false});
+
+    micBtn.addEventListener('touchend', (e) => {
+        if(!isDragging) return;
+        isDragging = false;
+        lockIndicator.style.display = 'none';
+        micBtn.style.transform = 'scale(1)';
+        micBtn.style.color = '#555';
+        
+        if(!isMicLocked && isVoiceRecording) {
+            // User released finger before locking -> STOP & SEND
+            if(mediaRecorder && mediaRecorder.state === 'recording') mediaRecorder.stop();
+        }
+    });
+
+    function cancelVoiceRecording() {
+        isVoiceRecording = false; // Mark as cancelled so it doesn't process
+        if(mediaRecorder && mediaRecorder.state === 'recording') mediaRecorder.stop();
+        resetVoiceUI();
+    }
+
+    function stopAndSendVoiceRecording() {
+        if(mediaRecorder && mediaRecorder.state === 'recording') mediaRecorder.stop();
+        resetVoiceUI();
+    }
+
+    function resetVoiceUI() {
+        recordingOverlay.style.display = 'none';
+        standardInputBar.style.display = 'flex';
+        lockIndicator.style.display = 'none';
+        clearInterval(voiceTimerInterval);
+        micBtn.style.transform = 'scale(1)';
+        micBtn.style.color = '#555';
+        isVoiceRecording = false;
+        isMicLocked = false;
+        isDragging = false;
+    }
+
+    let currentPlayingBtn = null;
+    function playAudio(btn, audioBase64) {
+        const player = document.getElementById('global-audio-player');
+        if(currentPlayingBtn === btn && !player.paused) {
+            player.pause();
+            btn.innerHTML = '<i class="fas fa-play" style="margin-left: 2px;"></i>';
+            return;
+        }
+        if(currentPlayingBtn) currentPlayingBtn.innerHTML = '<i class="fas fa-play" style="margin-left: 2px;"></i>';
+        player.src = audioBase64;
+        player.play();
+        btn.innerHTML = '<i class="fas fa-pause"></i>';
+        currentPlayingBtn = btn;
+        player.onended = () => {
+            btn.innerHTML = '<i class="fas fa-play" style="margin-left: 2px;"></i>';
+            currentPlayingBtn = null;
+        }
+    }
+
+    async function processVoiceBlob(blob) {
+        if(voiceSeconds < 1) return; // Ignore accidental short taps
+        
+        const reader = new FileReader();
+        reader.readAsDataURL(blob);
+        reader.onloadend = async () => {
+            const base64Audio = reader.result;
+            const timeStr = recordTimerSpan.innerText;
+            
+            // 1. Create New Session if needed & Push to UI
+            if (isNewSession) { chatHistory.push({ title: "Voice Chat", messages: [] }); activeChatIndex = chatHistory.length - 1; isNewSession = false; }
+            addUserVoiceMessageToUI(base64Audio, timeStr, chatHistory[activeChatIndex].messages.length);
+            
+            // 2. Add temporary AI Thinking UI
+            isGenerating = true;
+            const container = document.getElementById('chat-container');
+            const aiRow = document.createElement('div'); aiRow.className = 'message-row ai-row';
+            aiRow.innerHTML = `<img src="logo.jpg.jpg" class="avatar"><div class="bubble-container"><div class="bubble ai-bubble">Listening...</div></div>`;
+            container.appendChild(aiRow); currentAiRow = aiRow;
+            container.scrollTop = container.scrollHeight;
+            
+            try {
+                // 3. Send to Groq Whisper AI to Transcribe
+                const formData = new FormData();
+                formData.append("file", blob, "voice.webm");
+                formData.append("model", "whisper-large-v3");
+                
+                const transRes = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
+                    method: "POST", headers: { "Authorization": `Bearer ${GROQ_API_KEY}` }, body: formData
+                });
+                
+                if(!transRes.ok) throw new Error("Whisper Error");
+                const transData = await transRes.json();
+                const textMsg = transData.text || "Hello";
+                
+                // 4. Save to DB
+                chatHistory[activeChatIndex].messages.push({ role: "user", content: `[Voice Note]: ${textMsg}`, audioData: base64Audio, audioTime: timeStr });
+                saveHistoryToDB();
+                
+                // 5. Send recognized text to normal Chat AI
+                currentAiRow.querySelector('.ai-bubble').innerText = "Thinking...";
+                callDatexAPI(false, textMsg); // Bypass UI text read, send direct text
+
+            } catch(e) {
+                currentAiRow.querySelector('.ai-bubble').innerText = "Sorry, I couldn't hear that properly.";
+                isGenerating = false;
+            }
+        };
+    }
+    // ==========================================
+
+
+    async function callDatexAPI(isRegenerate = false, directTextOverride = null) {
+        let message = "";
+        let attachmentToSave = null;
+        
+        // This is for Standard Text Chat
+        if (!isRegenerate) {
+            if(directTextOverride) {
+                message = directTextOverride; // Used by Voice Engine
+            } else {
+                const input = document.getElementById('user-input');
+                message = input.value.trim();
+                
+                if (currentAttachmentData) {
+                    attachmentToSave = currentAttachmentData;
+                    removeAttachment(); 
+                }
+
+                if (!message && !attachmentToSave) return;
+                
+                sessionFinalText = ""; input.value = ""; input.style.height = "44px"; 
+
+                if (isNewSession) {
+                    const titleText = message ? message.substring(0, 30) : "Image Upload";
+                    const newChat = { title: titleText, messages: [] };
+                    chatHistory.push(newChat); activeChatIndex = chatHistory.length - 1; isNewSession = false;
+                } else if (editingMsgIdx !== -1) {
+                    chatHistory[activeChatIndex].messages.splice(editingMsgIdx); editingMsgIdx = -1; loadSelectedChat(activeChatIndex, false); 
+                }
+                
+                const currentMsgIdx = chatHistory[activeChatIndex].messages.length;
+                const msgObj = { role: "user", content: message };
+                if (attachmentToSave) msgObj.attachment = attachmentToSave;
+
+                chatHistory[activeChatIndex].messages.push(msgObj);
+                localStorage.setItem('datex_full_history', JSON.stringify(chatHistory));
+                
+                renderChatList();
+                addUserMessageToUI(message, false, currentMsgIdx, attachmentToSave);
+                
+                isGenerating = true; stopGenerationFlag = false;
+                const sendBtn = document.querySelector('.send-btn'); sendBtn.innerHTML = '<div class="stop-square"></div>';
+
+                const container = document.getElementById('chat-container');
+                const aiRow = document.createElement('div'); aiRow.className = 'message-row ai-row';
+                aiRow.innerHTML = `<img src="logo.jpg.jpg" class="avatar"><div class="bubble-container"><div class="bubble ai-bubble">Thinking...</div></div>`;
+                container.appendChild(aiRow); currentAiRow = aiRow;
+            }
         } else {
-            document.querySelector('.send-btn').style.display = 'none';
-            document.getElementById('mike-btn').style.display = 'flex';
+            const lastUserMsg = chatHistory[activeChatIndex].messages[chatHistory[activeChatIndex].messages.length - 1];
+            if(lastUserMsg && lastUserMsg.role === 'user') { message = lastUserMsg.content; }
         }
-    }
 
-    async function handleNormalTextSend() {
-        const input = document.getElementById('user-input');
-        let message = cleanOldTags(input.value.trim()); 
-        
-        if (!message) return;
-        input.value = ""; input.style.height = "44px";
-        autoGrow(input); // Reset buttons
-        
-        if (isNewSession) { 
-            chatHistory.push({ title: message.substring(0, 30), messages: [] }); 
-            activeChatIndex = chatHistory.length - 1; 
-            isNewSession = false; 
-        }
-        
-        chatHistory[activeChatIndex].messages.push({ role: "user", content: message });
-        saveHistoryToDB(); renderChatList(); 
-        addUserMessageToUI(message, false, chatHistory[activeChatIndex].messages.length - 1);
-        
-        isGenerating = true; stopGenerationFlag = false;
-        document.querySelector('.send-btn').style.display = 'flex';
-        document.querySelector('.send-btn').innerHTML = '<div class="stop-square"></div>';
-        document.getElementById('mike-btn').style.display = 'none';
+        const now = new Date();
+        const dateStr = now.toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        const timeStr = now.toLocaleTimeString('en-IN');
 
-        const container = document.getElementById('chat-container');
-        const aiRow = document.createElement('div'); aiRow.className = 'message-row ai-row';
-        aiRow.innerHTML = `<img src="logo.jpg.jpg" class="avatar"><div class="bubble-container"><div class="bubble ai-bubble">Thinking...</div></div>`;
-        container.appendChild(aiRow); currentAiRow = aiRow;
+        let dynamicSystemPrompt = `You are DATEX AI. Your name is strictly 'DATEX AI'. You must never identify as Llama, Meta, or OpenAI. 
+CURRENT REAL-TIME DATA: Today is ${dateStr} and the current time is ${timeStr}.
+CRITICAL INSTRUCTIONS:
+1. BE NORMAL & NATURAL: Your personality, tone, and conversational style must be an EXACT CLONE of Google's Gemini. Be conversational, empathetic, friendly, and highly intelligent.
+2. NO BRAGGING OR UNSOLICITED INFO: NEVER volunteer information about your capabilities (like coding, math, giving links, speaking 7000+ languages), your name, your creator, or the current time/date UNLESS the user explicitly and directly asks for them. Keep your answers directly focused on the user's prompt.
+3. MULTILINGUAL CAPABILITY: You understand and can converse fluently in all global languages (7000+). Always respond naturally in the language the user is speaking. NEVER state that you can speak 7000+ languages unless directly asked.
+4. ADVANCED MATHEMATICS (STRICT): A backend calculator solves math for you. IF a secret System Note provides a math result, YOU ARE FORBIDDEN from calculating it yourself. You MUST copy the exact number from the secret note and present it as your final answer.
+5. LIVE INTERNET & FAKE LINKS: You HAVE real-time live internet access. DO NOT INVENT, GUESS, OR HALLUCINATE LINKS. If you do not have the exact URL provided in the [System Note (Real-Time Internet Data)], you MUST state that you don't have the link. Only format provided URLs like [Website Name](https://...).
+6. IDENTITY: ONLY IF directly asked "who created you" or "who is your owner", state you were created and are owned by N.Sujal Kumar, a 16-year-old visionary from India.
+7. CODING RULE: Only provide programming code if explicitly asked.
+8. STRICT SAFETY & NSFW POLICY: This is a family-friendly AI app used by children. ABSOLUTELY NO explicit, adult, NSFW, or inappropriate content is permitted.
+9. VISION OVERRIDE: You are a powerful Multimodal AI. You HAVE full vision capabilities. When an image is provided in the message, YOU CAN SEE IT. You must analyze the image and answer the user's question based on its visual contents. NEVER say you cannot see the image or that you are a text-based AI. If a document is attached instead, acknowledge its name politely.`;
 
-        executeGroqChatAPI();
-    }
+        let mathContext = ""; let hasValidMath = false;
+        try {
+            if (/[\d]\s*[\+\-\*\/\^]\s*[\d]/.test(message)) {
+                const cleanMessage = message.replace(/,/g, ''); const mathRegex = /(?:(?:\d+\.?\d*)\s*[\+\-\*\/\^\(\)]\s*)+(?:\d+\.?\d*)/g; const matches = cleanMessage.match(mathRegex);
+                if (matches) {
+                    matches.forEach(match => {
+                        try { if (/[\+\-\*\/\^]/.test(match)) { const result = math.evaluate(match); if(result !== undefined && !isNaN(result)) { mathContext += `${match} = ${result}\n`; hasValidMath = true; } } } catch(err) { }
+                    });
+                }
+            }
+        } catch(e) { }
 
-    async function executeGroqChatAPI() {
-        let apiMessages = [{ "role": "system", "content": "You are DATEX AI. You are a helpful, smart text-based AI. Act natural, empathetic, and highly intelligent." }];
-        
-        chatHistory[activeChatIndex].messages.forEach((msg) => {
-            apiMessages.push({ role: msg.role, content: msg.content });
+        if (hasValidMath) { dynamicSystemPrompt += `\n\n[CRITICAL SYSTEM OVERRIDE - MATH DETECTED]: The user has provided a mathematical expression. The absolute, mathematically proven correct answer is:\n${mathContext}\nDO NOT CALCULATE THIS YOURSELF. YOUR INTERNAL CALCULATOR IS BROKEN. YOU MUST COPY AND PASTE THIS EXACT NUMBER AS YOUR FINAL ANSWER. NO EXCEPTIONS.`; }
+
+        // WE ARE NOW PURELY A TEXT CONVERSATION BOT
+        let apiMessages = [ { "role": "system", "content": dynamicSystemPrompt } ];
+        chatHistory[activeChatIndex].messages.forEach(msg => {
+            if (msg.role === 'user') {
+                let textContent = msg.content || "";
+                if (msg.attachment && msg.attachment.type === 'file') {
+                    textContent = `[System Note: User has attached a document named "${msg.attachment.name}"]\n` + textContent;
+                }
+                apiMessages.push({ role: 'user', content: textContent });
+            } else {
+                apiMessages.push({ role: 'assistant', content: msg.content });
+            }
         });
 
-        // PURE TEXT MODEL - ERROR FREE!
+        // USING STABLE TEXT MODEL
         const selectedModel = "llama-3.3-70b-versatile";
 
         abortController = new AbortController();
+
         try {
-            const res = await fetch("[https://api.groq.com/openai/v1/chat/completions](https://api.groq.com/openai/v1/chat/completions)", {
+            const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
                 method: 'POST', headers: { 'Authorization': `Bearer ${GROQ_API_KEY}`, 'Content-Type': 'application/json' }, signal: abortController.signal,
-                body: JSON.stringify({ "messages": apiMessages, "model": selectedModel })
+                body: JSON.stringify({ 
+                    "messages": apiMessages, 
+                    "model": selectedModel,
+                    "max_tokens": 4096 
+                }) 
             });
             
-            if (!res.ok) throw new Error(`Server Error ${res.status}`);
-
+            if (!res.ok) {
+                const errData = await res.json();
+                throw new Error(errData.error?.message || `Server Error ${res.status}`);
+            }
+            
             const data = await res.json();
-            const aiResponse = data.choices[0].message.content;
-            chatHistory[activeChatIndex].messages.push({ role: "assistant", content: aiResponse });
-            saveHistoryToDB(); currentAiRow.querySelector('.ai-bubble').innerHTML = ""; typeEffect(currentAiRow.querySelector('.ai-bubble'), aiResponse, 5);
+            
+            if (data.error || !data.choices || data.choices.length === 0) { 
+                throw new Error("API Limit Reached or Internal Error"); 
+            }
+            
+            const aiResponse = data.choices[0].message.content; const aiMsgIdx = chatHistory[activeChatIndex].messages.length;
+            chatHistory[activeChatIndex].messages.push({ role: "assistant", content: aiResponse }); currentAiRow.setAttribute('data-index', aiMsgIdx);
+            localStorage.setItem('datex_full_history', JSON.stringify(chatHistory)); currentAiRow.querySelector('.ai-bubble').innerHTML = ""; typeEffect(currentAiRow.querySelector('.ai-bubble'), aiResponse, 5);
+            
         } catch (e) { 
-            if (e.name === 'AbortError') { currentAiRow.querySelector('.ai-bubble').innerText = "Generation stopped."; } 
-            else { currentAiRow.querySelector('.ai-bubble').innerText = "Network or API limit error. Try again."; }
-            resetSendButtonState(); addAiActions(currentAiRow, true);
+            if (e.name === 'AbortError') { 
+                currentAiRow.querySelector('.ai-bubble').innerText = "Generation stopped."; 
+            } else { 
+                currentAiRow.querySelector('.ai-bubble').innerText = "Server Error: " + e.message; 
+            }
+            resetSendButton(); addAiActions(currentAiRow, true);
         }
     }
-    
+
     document.getElementById('user-input').addEventListener('keydown', (e) => {
         if (e.key === 'Enter' && !e.shiftKey) { if (window.innerWidth <= 768 || ('ontouchstart' in window)) { return; } e.preventDefault(); handleSendClick(); }
     });
