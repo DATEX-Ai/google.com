@@ -161,27 +161,39 @@
             overflow: hidden;
         }
 
-        .attachment-preview {
+        .attachment-preview-container {
             display: none;
+            flex-wrap: nowrap;
+            gap: 10px;
+            padding: 12px 20px 0 20px;
+            overflow-x: auto;
+            overflow-y: hidden;
+            scroll-behavior: smooth;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+        }
+        .attachment-preview-container::-webkit-scrollbar {
+            display: none;
+        }
+        .attachment-chip {
             position: relative;
-            margin: 12px 0 0 20px; 
-            width: 72px;
-            height: 72px;
+            width: 65px;
+            height: 65px;
             border-radius: 12px;
             background: #e5e7eb;
             border: 1px solid #ddd;
+            display: flex;
             align-items: center;
             justify-content: center;
             flex-shrink: 0;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
         }
-        .attachment-preview img {
+        .attachment-chip img {
             width: 100%;
             height: 100%;
             object-fit: cover;
             border-radius: 11px;
         }
-        .attachment-preview .remove-btn {
+        .attachment-chip .remove-btn {
             position: absolute;
             top: -6px;
             right: -6px;
@@ -198,21 +210,6 @@
             cursor: pointer;
             z-index: 10;
             box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-        }
-        .file-icon-placeholder {
-            font-size: 28px;
-            color: #1a73e8;
-        }
-        .file-name-placeholder {
-            font-size: 10px;
-            color: #555;
-            margin-top: 6px;
-            max-width: 60px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-            font-weight: 500;
-            text-align: center;
         }
 
         .input-bar { 
@@ -390,12 +387,83 @@
         .hidden-input {
             display: none;
         }
+
+        /* NATIVE TOAST CSS */
+        .toast-msg {
+            visibility: hidden;
+            min-width: 250px;
+            background-color: #323232;
+            color: #fff;
+            text-align: center;
+            border-radius: 8px;
+            padding: 12px 20px;
+            position: fixed;
+            z-index: 3000;
+            left: 50%;
+            bottom: 30px;
+            transform: translateX(-50%);
+            font-size: 14px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            transition: visibility 0.5s, opacity 0.5s;
+            opacity: 0;
+            font-weight: 500;
+        }
+        .toast-msg.show {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        /* LIGHTBOX (IMAGE ZOOM) CSS */
+        .lightbox {
+            display: none; 
+            position: fixed; 
+            z-index: 4000; 
+            left: 0; 
+            top: 0; 
+            width: 100%; 
+            height: 100%; 
+            background-color: rgba(0,0,0,0.85); 
+            backdrop-filter: blur(5px);
+        }
+        .lightbox-content {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100%;
+            width: 100%;
+        }
+        .lightbox img {
+            max-width: 90%; 
+            max-height: 80%; 
+            border-radius: 12px; 
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            object-fit: contain;
+        }
+        .lightbox-close {
+            position: absolute; 
+            top: 20px; 
+            right: 30px; 
+            color: #fff; 
+            font-size: 35px; 
+            font-weight: bold; 
+            cursor: pointer;
+            z-index: 4001;
+        }
     </style>
 </head>
 <body onclick="hideMsgMenu()">
 
     <div class="overlay" id="overlay" onclick="toggleSidebar()"></div>
     <div class="attachment-overlay" id="attachment-overlay" onclick="toggleAttachmentMenu()"></div>
+
+    <div id="lightbox" class="lightbox" onclick="closeLightbox()">
+        <span class="lightbox-close">&times;</span>
+        <div class="lightbox-content">
+            <img id="lightbox-img" src="">
+        </div>
+    </div>
+
+    <div id="toast" class="toast-msg">Select up to 10 items</div>
 
     <div id="msg-menu" class="msg-menu">
         <button id="copy-btn-ui" onclick="copyMsg()"><i class="fas fa-copy"></i> Copy</button>
@@ -424,8 +492,8 @@
     </div>
 
     <input type="file" id="camera-input" class="hidden-input" accept="image/*" capture onchange="handleFileSelect(event)">
-    <input type="file" id="gallery-input" class="hidden-input" accept="image/*" onchange="handleFileSelect(event)">
-    <input type="file" id="file-input" class="hidden-input" accept=".pdf,.doc,.docx,.txt" onchange="handleFileSelect(event)">
+    <input type="file" id="gallery-input" class="hidden-input" accept="image/*" multiple onchange="handleFileSelect(event)">
+    <input type="file" id="file-input" class="hidden-input" accept=".pdf,.doc,.docx,.txt" multiple onchange="handleFileSelect(event)">
 
     <div class="sidebar" id="sidebar">
         <div class="sidebar-content">
@@ -457,14 +525,7 @@
                 
                 <div class="chat-input-container">
                     
-                    <div id="attachment-preview" class="attachment-preview">
-                        <img id="attachment-img-preview" src="">
-                        <div id="attachment-file-preview" style="display: none; flex-direction: column; align-items: center; justify-content: center; height: 100%; width: 100%;">
-                            <i id="attachment-icon" class="fas fa-file-alt file-icon-placeholder"></i>
-                            <span id="attachment-name" class="file-name-placeholder"></span>
-                        </div>
-                        <div class="remove-btn" onclick="removeAttachment()"><i class="fas fa-times"></i></div>
-                    </div>
+                    <div id="attachment-preview-container" class="attachment-preview-container"></div>
 
                     <div class="input-bar">
                         <div style="height: 44px; display: flex; align-items: center; margin-right: 12px;">
@@ -483,6 +544,63 @@
     </div>
 
     <script>
+    // LIGHTBOX FUNCTIONALITY
+    function openLightbox(src) {
+        document.getElementById('lightbox-img').src = src;
+        document.getElementById('lightbox').style.display = 'block';
+    }
+    function closeLightbox() {
+        document.getElementById('lightbox').style.display = 'none';
+    }
+
+    function showToast(message) {
+        const toast = document.getElementById("toast");
+        toast.innerText = message;
+        toast.classList.add("show");
+        setTimeout(function(){ toast.classList.remove("show"); }, 3000);
+    }
+
+    const dbName = "DATEX_AI_DB";
+    const storeName = "ChatHistory";
+    let db;
+
+    const request = indexedDB.open(dbName, 1);
+    request.onupgradeneeded = (e) => {
+        db = e.target.result;
+        if (!db.objectStoreNames.contains(storeName)) {
+            db.createObjectStore(storeName);
+        }
+    };
+    request.onsuccess = (e) => {
+        db = e.target.result;
+        initApp();
+    };
+
+    function saveHistoryToDB() {
+        if (!db) return;
+        const tx = db.transaction(storeName, "readwrite");
+        const store = tx.objectStore(storeName);
+        store.put(chatHistory, "full_history");
+    }
+
+    function loadHistoryFromDB() {
+        return new Promise((resolve) => {
+            if (!db) return resolve([]);
+            const tx = db.transaction(storeName, "readonly");
+            const store = tx.objectStore(storeName);
+            const request = store.get("full_history");
+            request.onsuccess = () => resolve(request.result || []);
+            request.onerror = () => resolve([]);
+        });
+    }
+
+    let chatHistory = [];
+    async function initApp() {
+        chatHistory = await loadHistoryFromDB();
+        renderChatList();
+        if(chatHistory.length === 0) createNewChat();
+    }
+
     document.addEventListener('contextmenu', function(e) {
         if (e.target.tagName !== 'TEXTAREA' && e.target.tagName !== 'INPUT') {
             e.preventDefault();
@@ -493,47 +611,49 @@
         const resizeHandler = () => {
             document.body.style.height = window.visualViewport.height + 'px';
             window.scrollTo(0, 0);
+            setTimeout(() => {
+                const container = document.getElementById('chat-container');
+                container.scrollTop = container.scrollHeight;
+            }, 50);
         };
         window.visualViewport.addEventListener('resize', resizeHandler);
         resizeHandler();
     }
 
+    document.getElementById('user-input').addEventListener('focus', () => {
+        setTimeout(() => {
+            const container = document.getElementById('chat-container');
+            container.scrollTop = container.scrollHeight;
+        }, 300);
+    });
+
+    // GROQ API KEY
     const GROQ_API_KEY = "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"; 
     const TAVILY_API_KEY = "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"; 
 
-    let chatHistory = JSON.parse(localStorage.getItem('datex_full_history')) || [];
     let isNewSession = true;
     let selectedMsgRow = null;
     let isRecording = false;
     let activeChatIndex = -1;
     let sessionFinalText = ""; 
     let editingMsgIdx = -1; 
-    
     let isGenerating = false;
     let stopGenerationFlag = false;
     let abortController = null;
     let currentAiRow = null;
-
-    let currentAttachmentData = null;
+    
+    let currentAttachments = [];
 
     document.getElementById('chat-container').addEventListener('scroll', () => {
-        if(document.getElementById('msg-menu').style.display === 'flex') {
-            hideMsgMenu();
-        }
+        if(document.getElementById('msg-menu').style.display === 'flex') hideMsgMenu();
     });
-    window.addEventListener('scroll', hideMsgMenu);
 
     function toggleAttachmentMenu(e) {
         if(e) e.stopPropagation();
         const menu = document.getElementById('attachment-menu');
         const overlay = document.getElementById('attachment-overlay');
-        if (menu.classList.contains('active')) {
-            menu.classList.remove('active');
-            overlay.classList.remove('active');
-        } else {
-            menu.classList.add('active');
-            overlay.classList.add('active');
-        }
+        menu.classList.toggle('active');
+        overlay.classList.toggle('active');
     }
 
     function triggerCamera() { document.getElementById('camera-input').click(); toggleAttachmentMenu(); }
@@ -541,65 +661,113 @@
     function triggerFiles() { document.getElementById('file-input').click(); toggleAttachmentMenu(); }
 
     function handleFileSelect(event) {
-        const file = event.target.files[0];
-        if(file) {
+        const files = event.target.files;
+        if(!files || files.length === 0) return;
+
+        let limitReached = false;
+        let availableSlots = 10 - currentAttachments.length;
+
+        if (availableSlots <= 0) {
+            showToast("Select up to 10 items");
+            event.target.value = '';
+            return;
+        }
+
+        let filesToProcess = Array.from(files).slice(0, availableSlots);
+        if (files.length > availableSlots) {
+            limitReached = true;
+        }
+
+        filesToProcess.forEach(file => {
             if (file.type.startsWith('video/')) {
-                alert("Videos are not allowed! Please select a valid photo or document.");
-                event.target.value = '';
+                showToast("Videos are not allowed!");
                 return;
             }
 
-            const previewContainer = document.getElementById('attachment-preview');
-            const imgPreview = document.getElementById('attachment-img-preview');
-            const filePreview = document.getElementById('attachment-file-preview');
-            const fileNameSpan = document.getElementById('attachment-name');
-
-            if (file.type.startsWith('image/')) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                if (file.type.startsWith('image/')) {
                     const img = new Image();
                     img.onload = function() {
                         const canvas = document.createElement('canvas');
-                        const MAX_WIDTH = 300;
-                        const scaleSize = MAX_WIDTH / img.width;
-                        canvas.width = MAX_WIDTH;
-                        canvas.height = img.height * scaleSize;
-                        const ctx = canvas.getContext('2d');
-                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                        const compressedBase64 = canvas.toDataURL('image/jpeg', 0.6);
+                        
+                        // SMART COMPRESSION TO PREVENT 4MB PAYLOAD CRASH (405 Error Fix)
+                        const MAX_DIMENSION = 800;
+                        let width = img.width;
+                        let height = img.height;
 
-                        currentAttachmentData = { type: 'image', name: file.name, data: compressedBase64 };
-                        imgPreview.src = compressedBase64;
-                        imgPreview.style.display = 'block';
-                        filePreview.style.display = 'none';
-                        previewContainer.style.display = 'flex';
+                        if (width > height) {
+                            if (width > MAX_DIMENSION) {
+                                height *= MAX_DIMENSION / width;
+                                width = MAX_DIMENSION;
+                            }
+                        } else {
+                            if (height > MAX_DIMENSION) {
+                                width *= MAX_DIMENSION / height;
+                                height = MAX_DIMENSION;
+                            }
+                        }
+
+                        canvas.width = width;
+                        canvas.height = height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, width, height);
+                        
+                        const optimizedBase64 = canvas.toDataURL('image/jpeg', 0.6); 
+
+                        currentAttachments.push({ type: 'image', name: file.name, data: optimizedBase64 });
+                        renderAttachmentPreview();
                     }
                     img.src = e.target.result;
+                } else {
+                    currentAttachments.push({ type: 'file', name: file.name, data: null });
+                    renderAttachmentPreview();
                 }
-                reader.readAsDataURL(file);
-            } else {
-                currentAttachmentData = { type: 'file', name: file.name, data: null };
-                imgPreview.style.display = 'none';
-                filePreview.style.display = 'flex';
-                let shortName = file.name.length > 12 ? file.name.substring(0, 8) + ".." + file.name.substring(file.name.lastIndexOf('.')) : file.name;
-                fileNameSpan.innerText = shortName;
-                previewContainer.style.display = 'flex';
             }
+            reader.readAsDataURL(file);
+        });
+        
+        if (limitReached) {
+            showToast("Select up to 10 items");
         }
+        
         event.target.value = '';
     }
 
-    function removeAttachment() {
-        currentAttachmentData = null;
-        document.getElementById('attachment-preview').style.display = 'none';
-        document.getElementById('attachment-img-preview').src = "";
+    function renderAttachmentPreview() {
+        const container = document.getElementById('attachment-preview-container');
+        container.innerHTML = '';
+        if (currentAttachments.length === 0) {
+            container.style.display = 'none';
+            return;
+        }
+        container.style.display = 'flex';
+        currentAttachments.forEach((att, index) => {
+            const chip = document.createElement('div');
+            chip.className = 'attachment-chip';
+            const removeBtn = document.createElement('div');
+            removeBtn.className = 'remove-btn';
+            removeBtn.innerHTML = '<i class="fas fa-times"></i>';
+            removeBtn.onclick = () => removeAttachment(index);
+            if (att.type === 'image') {
+                chip.innerHTML = `<img src="${att.data}">`;
+            } else {
+                chip.innerHTML = `<div style="display:flex; flex-direction:column; align-items:center;"><i class="fas fa-file-alt" style="font-size:24px; color:#1a73e8;"></i><span style="font-size:9px; margin-top:4px; max-width:55px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${att.name}</span></div>`;
+            }
+            chip.appendChild(removeBtn);
+            container.appendChild(chip);
+        });
+        container.scrollLeft = container.scrollWidth;
+    }
+
+    function removeAttachment(index) {
+        currentAttachments.splice(index, 1);
+        renderAttachmentPreview();
     }
 
     function autoGrow(element) {
         element.style.height = "44px"; 
-        if (element.scrollHeight > 44) {
-            element.style.height = (element.scrollHeight) + "px";
-        }
+        if (element.scrollHeight > 44) element.style.height = (element.scrollHeight) + "px";
     }
 
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -608,13 +776,37 @@
         recognition = new SpeechRecognition();
         recognition.interimResults = false; 
         recognition.continuous = true;
-        recognition.onstart = () => { isRecording = true; sessionFinalText = document.getElementById('user-input').value; if (sessionFinalText.length > 0 && !sessionFinalText.endsWith(" ")) { sessionFinalText += " "; } const btn = document.getElementById('mike-btn'); btn.classList.add('recording'); btn.innerHTML = '<i class="fas fa-microphone"></i>'; };
-        recognition.onend = () => { isRecording = false; const btn = document.getElementById('mike-btn'); btn.classList.remove('recording'); btn.innerHTML = '<i class="fas fa-microphone"></i>'; };
-        recognition.onresult = (e) => { let interimTranscript = ""; for (let i = e.resultIndex; i < e.results.length; ++i) { if (e.results[i].isFinal) { sessionFinalText += e.results[i][0].transcript; } else { interimTranscript += e.results[i][0].transcript; } } const input = document.getElementById('user-input'); input.value = sessionFinalText + interimTranscript; autoGrow(input); };
+        recognition.onstart = () => { 
+            isRecording = true; 
+            sessionFinalText = document.getElementById('user-input').value; 
+            if (sessionFinalText.length > 0 && !sessionFinalText.endsWith(" ")) { sessionFinalText += " "; } 
+            const btn = document.getElementById('mike-btn'); 
+            btn.classList.add('recording'); 
+            btn.innerHTML = '<i class="fas fa-microphone"></i>'; 
+        };
+        recognition.onend = () => { 
+            isRecording = false; 
+            const btn = document.getElementById('mike-btn'); 
+            btn.classList.remove('recording'); 
+            btn.innerHTML = '<i class="fas fa-microphone"></i>'; 
+        };
+        recognition.onresult = (e) => { 
+            let interimTranscript = ""; 
+            for (let i = e.resultIndex; i < e.results.length; ++i) { 
+                if (e.results[i].isFinal) { sessionFinalText += e.results[i][0].transcript; } 
+                else { interimTranscript += e.results[i][0].transcript; } 
+            } 
+            const input = document.getElementById('user-input'); 
+            input.value = sessionFinalText + interimTranscript; 
+            autoGrow(input); 
+        };
     }
 
     document.getElementById('mike-btn').onclick = () => {
-        if (!recognition) return;
+        if (!recognition) {
+            showToast("Voice typing is not supported in your browser.");
+            return;
+        }
         if (isRecording) { recognition.stop(); } else { recognition.start(); }
     };
 
@@ -638,9 +830,9 @@
     function deleteHistoryItem(event, index) {
         if(event) event.stopPropagation();
         chatHistory.splice(index, 1);
-        localStorage.setItem('datex_full_history', JSON.stringify(chatHistory));
+        saveHistoryToDB();
         renderChatList();
-        if (activeChatIndex === index) { createNewChat(true); } else if (activeChatIndex > index) { activeChatIndex--; }
+        if (activeChatIndex === index) createNewChat(true); else if (activeChatIndex > index) activeChatIndex--;
     }
 
     function loadSelectedChat(index, shouldToggleSidebar = false) {
@@ -650,8 +842,9 @@
         const container = document.getElementById('chat-container');
         container.innerHTML = "";
         chatHistory[index].messages.forEach((msg, msgIdx) => {
-            if(msg.role === "user") { addUserMessageToUI(msg.content, false, msgIdx, msg.attachment); }
-            else { addAiMessageToUI(msg.content, false, msgIdx); }
+            let atts = msg.attachments ? msg.attachments : (msg.attachment ? [msg.attachment] : []);
+            if(msg.role === "user") addUserMessageToUI(msg.content, false, msgIdx, atts);
+            else addAiMessageToUI(msg.content, false, msgIdx);
         });
         if(shouldToggleSidebar) toggleSidebar();
     }
@@ -672,36 +865,43 @@
         document.getElementById('overlay').classList.toggle('active');
     }
 
-    function addUserMessageToUI(text, isTyping, msgIdx, attachment = null) {
+    function cleanOldTags(text) {
+        if(!text) return "";
+        return text.replace(/\[System Note: User attached files previously\]\n?/g, "").trim();
+    }
+
+    // MULTIPLE BUBBLES FOR IMAGES (GEMINI STYLE)
+    function addUserMessageToUI(text, isTyping, msgIdx, attachments = []) {
         const container = document.getElementById('chat-container');
         if(document.getElementById('welcome-screen')) document.getElementById('welcome-screen').remove();
-        const row = document.createElement('div');
-        row.className = 'message-row user-row';
-        row.setAttribute('data-index', msgIdx); 
-
-        let attachmentHTML = '';
-        if (attachment) {
-            if (attachment.type === 'image') {
-                attachmentHTML = `<img src="${attachment.data}" style="width: 100%; max-width: 250px; border-radius: 12px; margin-bottom: 8px; object-fit: cover;">`;
-            } else {
-                attachmentHTML = `
-                <div style="display: flex; align-items: center; gap: 10px; background: #e5e7eb; padding: 10px 14px; border-radius: 12px; margin-bottom: 8px;">
-                    <i class="fas fa-file-pdf" style="color: #1a73e8; font-size: 24px;"></i>
-                    <span style="font-size: 13px; font-weight: 500; color: #333; max-width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${attachment.name}</span>
-                </div>`;
-            }
+        
+        if (attachments && attachments.length > 0) {
+            attachments.forEach(att => {
+                const row = document.createElement('div');
+                row.className = 'message-row user-row';
+                row.setAttribute('data-index', msgIdx); 
+                
+                let attHtml = '';
+                if (att.type === 'image') {
+                    attHtml = `<img src="${att.data}" onclick="openLightbox(this.src)" style="width: 100%; max-width: 250px; border-radius: 12px; object-fit: contain; background: transparent; cursor: pointer; display: block;">`;
+                } else {
+                    attHtml = `<div style="display: flex; align-items: center; gap: 6px;"><i class="fas fa-file-pdf" style="color: #1a73e8; font-size: 24px;"></i><span style="font-size: 13px; font-weight: 500; color:#333; max-width: 150px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${att.name}</span></div>`;
+                }
+                
+                row.innerHTML = `<div class="bubble-container"><div class="bubble user-bubble" style="padding: 6px; background: ${att.type==='image'?'transparent':'#f3f4f6'};">${attHtml}</div><div class="action-bar user-action-bar"><button class="action-btn" onclick="openMenu(event, this)"><i class="fas fa-ellipsis-v"></i></button></div></div>`;
+                container.appendChild(row);
+            });
         }
 
-        row.innerHTML = `<div class="bubble-container">
-                            <div class="bubble user-bubble" style="display: flex; flex-direction: column;">
-                                ${attachmentHTML}
-                                ${text ? `<span>${text}</span>` : ''}
-                            </div>
-                            <div class="action-bar user-action-bar">
-                                <button class="action-btn" onclick="openMenu(event, this)"><i class="fas fa-ellipsis-v"></i></button>
-                            </div>
-                         </div>`;
-        container.appendChild(row);
+        let cleanText = cleanOldTags(text);
+        if (cleanText) {
+            const row = document.createElement('div');
+            row.className = 'message-row user-row';
+            row.setAttribute('data-index', msgIdx); 
+            row.innerHTML = `<div class="bubble-container"><div class="bubble user-bubble"><span>${cleanText}</span></div><div class="action-bar user-action-bar"><button class="action-btn" onclick="openMenu(event, this)"><i class="fas fa-ellipsis-v"></i></button></div></div>`;
+            container.appendChild(row);
+        }
+        
         container.scrollTop = container.scrollHeight;
     }
 
@@ -713,13 +913,7 @@
         row.innerHTML = `<img src="logo.jpg.jpg" class="avatar"><div class="bubble-container"><div class="bubble ai-bubble"></div></div>`;
         const bubble = row.querySelector('.ai-bubble');
         container.appendChild(row);
-        
-        if(isNew) { 
-            typeEffect(bubble, text, 5); 
-        } else { 
-            renderStoredContent(bubble, text); 
-            addAiActions(row, false);
-        }
+        if(isNew) typeEffect(bubble, text, 5); else { renderStoredContent(bubble, text); addAiActions(row, false); }
         container.scrollTop = container.scrollHeight;
     }
 
@@ -727,9 +921,7 @@
         if (!row) return;
         const container = row.querySelector('.bubble-container');
         if (container && !container.querySelector('.action-bar')) {
-            let html = '<div class="action-bar ai-action-bar">';
-            if (isStopped) { html += `<button class="action-btn" onclick="regenerateMessage(this)"><i class="fas fa-redo"></i></button>`; }
-            html += `<button class="action-btn" onclick="openMenu(event, this)"><i class="fas fa-ellipsis-v"></i></button></div>`;
+            let html = `<div class="action-bar ai-action-bar">${isStopped ? `<button class="action-btn" onclick="regenerateMessage(this)"><i class="fas fa-redo"></i></button>` : ''}<button class="action-btn" onclick="openMenu(event, this)"><i class="fas fa-ellipsis-v"></i></button></div>`;
             container.insertAdjacentHTML('beforeend', html);
         }
     }
@@ -738,322 +930,189 @@
         e.stopPropagation(); 
         const menu = document.getElementById('msg-menu');
         const row = btn.closest('.message-row');
-        
         if (menu.style.display === 'flex' && selectedMsgRow === row) { hideMsgMenu(); return; }
-
         selectedMsgRow = row;
-        const editBtn = document.getElementById('edit-btn-ui');
-        const deleteBtn = document.getElementById('delete-btn-ui');
-        let isUser = selectedMsgRow.classList.contains('user-row');
-        
-        if(!isUser) { editBtn.style.display = 'none'; deleteBtn.style.display = 'none'; } 
-        else { editBtn.style.display = 'flex'; deleteBtn.style.display = 'flex'; }
-        
+        const isUser = selectedMsgRow.classList.contains('user-row');
+        document.getElementById('edit-btn-ui').style.display = isUser ? 'flex' : 'none';
+        document.getElementById('delete-btn-ui').style.display = isUser ? 'flex' : 'none';
         const rect = btn.getBoundingClientRect();
-        let x = isUser ? (rect.left - 140) : (rect.right + 5);
-        let y = rect.top; 
-        
-        if (x < 10) x = 10;
-        if (x + 140 > window.innerWidth) x = window.innerWidth - 150;
-        if (y + 120 > window.innerHeight) y = window.innerHeight - 130; 
-        
-        menu.style.left = x + 'px'; menu.style.top = y + 'px'; menu.style.display = 'flex';
+        menu.style.left = isUser ? (rect.left - 140) + 'px' : (rect.right + 5) + 'px';
+        menu.style.top = rect.top + 'px';
+        menu.style.display = 'flex';
     }
 
     function hideMsgMenu() { document.getElementById('msg-menu').style.display = 'none'; }
-    function copyMsg() { if(!selectedMsgRow) return; const text = selectedMsgRow.querySelector('.bubble').innerText; navigator.clipboard.writeText(text).then(() => { hideMsgMenu(); }); }
+    function copyMsg() { if(!selectedMsgRow) return; navigator.clipboard.writeText(selectedMsgRow.querySelector('.bubble').innerText).then(hideMsgMenu); }
     
     function editMsg() { 
         if(!selectedMsgRow) return; 
         editingMsgIdx = parseInt(selectedMsgRow.getAttribute('data-index')); 
         const msgObj = chatHistory[activeChatIndex].messages[editingMsgIdx];
+        document.getElementById('user-input').value = cleanOldTags(msgObj.content); 
+        autoGrow(document.getElementById('user-input')); 
         
-        const input = document.getElementById('user-input'); 
-        input.value = msgObj.content || ""; 
-        autoGrow(input); 
-        input.focus(); 
+        currentAttachments = msgObj.attachments ? [...msgObj.attachments] : (msgObj.attachment ? [msgObj.attachment] : []);
+        renderAttachmentPreview();
         
-        if (msgObj.attachment) {
-            currentAttachmentData = msgObj.attachment;
-            const previewContainer = document.getElementById('attachment-preview');
-            const imgPreview = document.getElementById('attachment-img-preview');
-            const filePreview = document.getElementById('attachment-file-preview');
-            const fileNameSpan = document.getElementById('attachment-name');
-
-            if (msgObj.attachment.type === 'image') {
-                imgPreview.src = msgObj.attachment.data;
-                imgPreview.style.display = 'block';
-                filePreview.style.display = 'none';
-            } else {
-                imgPreview.style.display = 'none';
-                filePreview.style.display = 'flex';
-                let shortName = msgObj.attachment.name.length > 12 ? msgObj.attachment.name.substring(0, 8) + ".." + msgObj.attachment.name.substring(msgObj.attachment.name.lastIndexOf('.')) : msgObj.attachment.name;
-                fileNameSpan.innerText = shortName;
-            }
-            previewContainer.style.display = 'flex';
-        } else {
-            removeAttachment();
-        }
-
         hideMsgMenu(); 
     }
 
     function deleteSelectedMsg() {
         if(selectedMsgRow && activeChatIndex !== -1) {
             const msgIdx = parseInt(selectedMsgRow.getAttribute('data-index'));
-            const isUserRow = selectedMsgRow.classList.contains('user-row');
             chatHistory[activeChatIndex].messages.splice(msgIdx, 1);
-            if (isUserRow && chatHistory[activeChatIndex].messages[msgIdx] && chatHistory[activeChatIndex].messages[msgIdx].role === "assistant") {
-                chatHistory[activeChatIndex].messages.splice(msgIdx, 1);
-            }
-            localStorage.setItem('datex_full_history', JSON.stringify(chatHistory));
-            editingMsgIdx = -1; 
-            if (chatHistory[activeChatIndex].messages.length === 0) { deleteHistoryItem(null, activeChatIndex); } 
-            else { loadSelectedChat(activeChatIndex, false); }
+            if (chatHistory[activeChatIndex].messages[msgIdx]?.role === "assistant") chatHistory[activeChatIndex].messages.splice(msgIdx, 1);
+            saveHistoryToDB();
+            if (chatHistory[activeChatIndex].messages.length === 0) deleteHistoryItem(null, activeChatIndex); else loadSelectedChat(activeChatIndex, false);
         }
         hideMsgMenu();
     }
 
-    function copyCode(btn) { const code = btn.parentElement.querySelector('code').innerText; navigator.clipboard.writeText(code).then(() => { btn.innerText = "Copied!"; setTimeout(() => { btn.innerText = "Copy"; }, 2000); }); }
-    function escapeHTML(str) { return str.replace(/[&<>"']/g, function(m) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]; }); }
-
     function formatLinksAndStyles(text) {
-        let formatted = text;
-        formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        let formatted = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
         formatted = formatted.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" class="ai-link">$1</a>');
-        let tempLinks = [];
-        formatted = formatted.replace(/<a[\s\S]*?<\/a>/g, function(match) { tempLinks.push(match); return `___A_TAG_${tempLinks.length - 1}___`; });
-        formatted = formatted.replace(/(^|\s)(https?:\/\/[^\s<()]+|www\.[^\s<()]+)/g, function(match, space, url) {
-            let cleanUrl = url.replace(/[.,;!?)]$/, ''); let diff = url.substring(cleanUrl.length); let fullUrl = cleanUrl.startsWith('www.') ? 'https://' + cleanUrl : cleanUrl;
-            return space + '<a href="' + fullUrl + '" target="_blank" class="ai-link">' + cleanUrl + '</a>' + diff;
+        return formatted.replace(/(^|\s)(https?:\/\/[^\s<()]+|www\.[^\s<()]+)/g, (m, s, url) => {
+            let cleanUrl = url.replace(/[.,;!?)]$/, '');
+            let fullUrl = cleanUrl.startsWith('www.') ? 'https://' + cleanUrl : cleanUrl;
+            return s + '<a href="' + fullUrl + '" target="_blank" class="ai-link">' + cleanUrl + '</a>';
         });
-        formatted = formatted.replace(/___A_TAG_(\d+)___/g, function(match, index) { return tempLinks[index]; });
-        return formatted;
     }
 
     function renderStoredContent(element, text) {
         let segments = text.split(/(```[\s\S]*?```)/g);
-        let finalHTML = "";
-        segments.forEach(seg => {
-            if (seg.startsWith("```") && seg.endsWith("```")) {
-                let codeContent = seg.substring(3, seg.length - 3).trim();
-                finalHTML += `<pre><button class="copy-code-btn" onclick="copyCode(this)">Copy</button><code>${escapeHTML(codeContent)}</code></pre>`;
-            } else { 
-                let formattedSeg = formatLinksAndStyles(seg);
-                finalHTML += formattedSeg.replace(/\n/g, "<br>"); 
+        element.innerHTML = segments.map(seg => {
+            if (seg.startsWith("```")) {
+                let code = seg.substring(3, seg.length - 3).trim();
+                return `<pre><button class="copy-code-btn" onclick="copyCode(this)">Copy</button><code>${code.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"}[m]))}</code></pre>`;
             }
-        });
-        element.innerHTML = finalHTML;
-        if(window.MathJax) { MathJax.typesetPromise([element]).catch((err) => console.log(err)); }
+            return formatLinksAndStyles(seg).replace(/\n/g, "<br>");
+        }).join("");
+        if(window.MathJax) MathJax.typesetPromise([element]);
     }
 
     function typeEffect(element, text, speed) {
-        let i = 0; let segments = text.split(/(```[\s\S]*?```)/g); let currentSeg = 0; let accumulatedHTML = ""; 
+        let i = 0; let accumulatedHTML = ""; 
         function typeNext() {
-            if (stopGenerationFlag) {
-                const aiMsgIdx = parseInt(currentAiRow.getAttribute('data-index'));
-                if(!isNaN(aiMsgIdx) && chatHistory[activeChatIndex].messages[aiMsgIdx]) { chatHistory[activeChatIndex].messages[aiMsgIdx].content = element.innerHTML; localStorage.setItem('datex_full_history', JSON.stringify(chatHistory)); }
-                resetSendButton(); addAiActions(currentAiRow, true); return;
-            }
-            if (currentSeg < segments.length) {
-                let seg = segments[currentSeg];
-                if (seg.startsWith("```") && seg.endsWith("```")) {
-                    let codeContent = seg.substring(3, seg.length - 3).trim();
-                    accumulatedHTML += `<pre><button class="copy-code-btn" onclick="copyCode(this)">Copy</button><code>${escapeHTML(codeContent)}</code></pre>`;
-                    element.innerHTML = accumulatedHTML; currentSeg++; setTimeout(typeNext, speed);
-                } else {
-                    let formattedSeg = formatLinksAndStyles(seg);
-                    if (i < formattedSeg.length) {
-                        if (formattedSeg.charAt(i) === '<') { let tagEnd = formattedSeg.indexOf('>', i); if (tagEnd !== -1) { accumulatedHTML += formattedSeg.substring(i, tagEnd + 1); i = tagEnd + 1; } else { accumulatedHTML += '&lt;'; i++; } } 
-                        else { accumulatedHTML += (formattedSeg.charAt(i) === '\n') ? "<br>" : formattedSeg.charAt(i); i++; }
-                        element.innerHTML = accumulatedHTML; setTimeout(typeNext, speed);
-                    } else { i = 0; currentSeg++; setTimeout(typeNext, speed); }
-                }
+            if (stopGenerationFlag) { resetSendButton(); addAiActions(currentAiRow, true); return; }
+            if (i < text.length) {
+                accumulatedHTML += (text.charAt(i) === '\n') ? "<br>" : text.charAt(i);
+                element.innerHTML = formatLinksAndStyles(accumulatedHTML);
+                i++; setTimeout(typeNext, speed);
                 document.getElementById('chat-container').scrollTop = document.getElementById('chat-container').scrollHeight;
-            } else {
-                renderStoredContent(element, text); resetSendButton(); addAiActions(currentAiRow, false);
-            }
+            } else { renderStoredContent(element, text); resetSendButton(); addAiActions(currentAiRow, false); }
         }
         typeNext();
     }
 
-    function handleSendClick() { if (isGenerating) { stopGeneration(); } else { callDatexAPI(); } }
-    function stopGeneration() { stopGenerationFlag = true; if (abortController) { abortController.abort(); } resetSendButton(); if (currentAiRow) { addAiActions(currentAiRow, true); } }
-    function resetSendButton() { isGenerating = false; const sendBtn = document.querySelector('.send-btn'); if(sendBtn) { sendBtn.innerHTML = '<i class="fas fa-arrow-up"></i>'; } }
-    
-    function regenerateMessage(btn) {
-        const row = btn.closest('.ai-row'); const indexAttr = row.getAttribute('data-index');
-        if (indexAttr) { const msgIdx = parseInt(indexAttr); if (chatHistory[activeChatIndex].messages[msgIdx]) { chatHistory[activeChatIndex].messages.splice(msgIdx, 1); localStorage.setItem('datex_full_history', JSON.stringify(chatHistory)); } }
-        row.remove(); callDatexAPI(true);
-    }
+    function handleSendClick() { if (isGenerating) stopGeneration(); else callDatexAPI(); }
+    function stopGeneration() { stopGenerationFlag = true; if (abortController) abortController.abort(); resetSendButton(); }
+    function resetSendButton() { isGenerating = false; document.querySelector('.send-btn').innerHTML = '<i class="fas fa-arrow-up"></i>'; }
 
     async function callDatexAPI(isRegenerate = false) {
-        try { if (isRecording && recognition) { recognition.stop(); } } catch(e) {}
-        isRecording = false;
-        const btn = document.getElementById('mike-btn');
-        btn.classList.remove('recording'); btn.innerHTML = '<i class="fas fa-microphone"></i>';
-
-        let message = "";
-        let attachmentToSave = null;
-        
+        let message = ""; let attachmentsToSave = [];
         if (!isRegenerate) {
             const input = document.getElementById('user-input');
-            message = input.value.trim();
+            message = cleanOldTags(input.value.trim()); 
+            attachmentsToSave = [...currentAttachments]; 
+            currentAttachments = [];
+            renderAttachmentPreview();
             
-            if (currentAttachmentData) {
-                attachmentToSave = currentAttachmentData;
-                removeAttachment(); 
+            if (!message && attachmentsToSave.length === 0) return;
+            input.value = ""; input.style.height = "44px";
+            
+            if (isNewSession) { 
+                chatHistory.push({ title: message ? message.substring(0, 30) : "Media Chat", messages: [] }); 
+                activeChatIndex = chatHistory.length - 1; 
+                isNewSession = false; 
             }
-
-            if (!message && !attachmentToSave) return;
+            const msgObj = { role: "user", content: message }; 
+            if (attachmentsToSave.length > 0) msgObj.attachments = attachmentsToSave;
             
-            sessionFinalText = ""; input.value = ""; input.style.height = "44px"; 
-
-            if (isNewSession) {
-                const titleText = message ? message.substring(0, 30) : "Image Upload";
-                const newChat = { title: titleText, messages: [] };
-                chatHistory.push(newChat); activeChatIndex = chatHistory.length - 1; isNewSession = false;
-            } else if (editingMsgIdx !== -1) {
-                chatHistory[activeChatIndex].messages.splice(editingMsgIdx); editingMsgIdx = -1; loadSelectedChat(activeChatIndex, false); 
-            }
-            
-            const currentMsgIdx = chatHistory[activeChatIndex].messages.length;
-            const msgObj = { role: "user", content: message };
-            if (attachmentToSave) msgObj.attachment = attachmentToSave;
-
             chatHistory[activeChatIndex].messages.push(msgObj);
-            localStorage.setItem('datex_full_history', JSON.stringify(chatHistory));
-            
-            renderChatList();
-            addUserMessageToUI(message, false, currentMsgIdx, attachmentToSave);
+            saveHistoryToDB(); 
+            renderChatList(); 
+            addUserMessageToUI(message, false, chatHistory[activeChatIndex].messages.length - 1, attachmentsToSave);
         } else {
-            const lastUserMsg = chatHistory[activeChatIndex].messages[chatHistory[activeChatIndex].messages.length - 1];
-            if(lastUserMsg && lastUserMsg.role === 'user') { message = lastUserMsg.content; }
+            message = chatHistory[activeChatIndex].messages.at(-1).content;
         }
 
         isGenerating = true; stopGenerationFlag = false;
-        const sendBtn = document.querySelector('.send-btn'); sendBtn.innerHTML = '<div class="stop-square"></div>';
-
+        document.querySelector('.send-btn').innerHTML = '<div class="stop-square"></div>';
         const container = document.getElementById('chat-container');
         const aiRow = document.createElement('div'); aiRow.className = 'message-row ai-row';
         aiRow.innerHTML = `<img src="logo.jpg.jpg" class="avatar"><div class="bubble-container"><div class="bubble ai-bubble">Thinking...</div></div>`;
-        container.appendChild(aiRow); const bubble = aiRow.querySelector('.ai-bubble'); currentAiRow = aiRow;
-
-        const now = new Date();
-        const dateStr = now.toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-        const timeStr = now.toLocaleTimeString('en-IN');
-
-        let dynamicSystemPrompt = `You are DATEX AI. Your name is strictly 'DATEX AI'. You must never identify as Llama, Meta, or OpenAI. 
-CURRENT REAL-TIME DATA: Today is ${dateStr} and the current time is ${timeStr}.
-CRITICAL INSTRUCTIONS:
-1. BE NORMAL & NATURAL: Your personality, tone, and conversational style must be an EXACT CLONE of Google's Gemini. Be conversational, empathetic, friendly, and highly intelligent.
-2. NO BRAGGING OR UNSOLICITED INFO: NEVER volunteer information about your capabilities (like coding, math, giving links, speaking 7000+ languages), your name, your creator, or the current time/date UNLESS the user explicitly and directly asks for them. Keep your answers directly focused on the user's prompt.
-3. MULTILINGUAL CAPABILITY: You understand and can converse fluently in all global languages (7000+). Always respond naturally in the language the user is speaking. NEVER state that you can speak 7000+ languages unless directly asked.
-4. ADVANCED MATHEMATICS (STRICT): A backend calculator solves math for you. IF a secret System Note provides a math result, YOU ARE FORBIDDEN from calculating it yourself. You MUST copy the exact number from the secret note and present it as your final answer.
-5. LIVE INTERNET & FAKE LINKS: You HAVE real-time live internet access. DO NOT INVENT, GUESS, OR HALLUCINATE LINKS. If you do not have the exact URL provided in the [System Note (Real-Time Internet Data)], you MUST state that you don't have the link. Only format provided URLs like [Website Name](https://...).
-6. IDENTITY: ONLY IF directly asked "who created you" or "who is your owner", state you were created and are owned by N.Sujal Kumar, a 16-year-old visionary from India.
-7. CODING RULE: Only provide programming code if explicitly asked.
-8. STRICT SAFETY & NSFW POLICY: This is a family-friendly AI app used by children. ABSOLUTELY NO explicit, adult, NSFW, or inappropriate content is permitted.
-9. VISION OVERRIDE: You are a powerful Multimodal AI. You HAVE full vision capabilities. When an image is provided in the message, YOU CAN SEE IT. You must analyze the image and answer the user's question based on its visual contents. NEVER say you cannot see the image or that you are a text-based AI. If a document is attached instead, acknowledge its name politely.`;
-
-        let mathContext = ""; let hasValidMath = false;
-        try {
-            if (/[\d]\s*[\+\-\*\/\^]\s*[\d]/.test(message)) {
-                const cleanMessage = message.replace(/,/g, ''); const mathRegex = /(?:(?:\d+\.?\d*)\s*[\+\-\*\/\^\(\)]\s*)+(?:\d+\.?\d*)/g; const matches = cleanMessage.match(mathRegex);
-                if (matches) {
-                    matches.forEach(match => {
-                        try { if (/[\+\-\*\/\^]/.test(match)) { const result = math.evaluate(match); if(result !== undefined && !isNaN(result)) { mathContext += `${match} = ${result}\n`; hasValidMath = true; } } } catch(err) { }
-                    });
-                }
-            }
-        } catch(e) { }
-
-        if (hasValidMath) { dynamicSystemPrompt += `\n\n[CRITICAL SYSTEM OVERRIDE - MATH DETECTED]: The user has provided a mathematical expression. The absolute, mathematically proven correct answer is:\n${mathContext}\nDO NOT CALCULATE THIS YOURSELF. YOUR INTERNAL CALCULATOR IS BROKEN. YOU MUST COPY AND PASTE THIS EXACT NUMBER AS YOUR FINAL ANSWER. NO EXCEPTIONS.`; }
+        container.appendChild(aiRow); currentAiRow = aiRow;
 
         let useVision = false;
-        let apiMessages = [ { "role": "system", "content": dynamicSystemPrompt } ];
-        chatHistory[activeChatIndex].messages.forEach(msg => {
+        let apiMessages = [{ "role": "system", "content": "You are DATEX AI. You have Vision. Analyse images strictly. Safety ON." }];
+        
+        const totalMsgs = chatHistory[activeChatIndex].messages.length;
+        
+        chatHistory[activeChatIndex].messages.forEach((msg, idx) => {
+            const isLastMessage = (idx === totalMsgs - 1);
+            let atts = msg.attachments ? msg.attachments : (msg.attachment ? [msg.attachment] : []);
+            let cleanMsgText = cleanOldTags(msg.content);
+            
             if (msg.role === 'user') {
-                if (msg.attachment && msg.attachment.type === 'image') {
-                    useVision = true;
-                    apiMessages.push({
-                        role: 'user',
-                        content: [
-                            { type: "text", text: msg.content ? msg.content : "Please analyze this image." },
-                            { type: "image_url", image_url: { url: msg.attachment.data } }
-                        ]
+                if (isLastMessage && atts.length > 0) {
+                    let imgCount = 0;
+                    let contentArray = [];
+                    if (cleanMsgText) contentArray.push({ type: "text", text: cleanMsgText });
+                    else contentArray.push({ type: "text", text: "Analyze the attached images." });
+                    
+                    atts.forEach(att => {
+                        // Max 5 images to prevent API overload
+                        if (att.type === 'image' && imgCount < 5) { 
+                            contentArray.push({ type: "image_url", image_url: { url: att.data } });
+                            useVision = true;
+                            imgCount++;
+                        }
                     });
+                    apiMessages.push({ role: 'user', content: contentArray });
                 } else {
-                    let textContent = msg.content || "";
-                    if (msg.attachment && msg.attachment.type === 'file') {
-                        textContent = `[System Note: User has attached a document named "${msg.attachment.name}"]\n` + textContent;
-                    }
-                    apiMessages.push({ role: 'user', content: textContent });
+                    let historyText = cleanMsgText;
+                    if (atts.length > 0) historyText = `[System Note: User attached files previously]\n` + historyText;
+                    apiMessages.push({ role: 'user', content: historyText });
                 }
             } else {
                 apiMessages.push({ role: 'assistant', content: msg.content });
             }
         });
 
-        const selectedModel = useVision ? "llama-3.2-11b-vision-preview" : "llama-3.3-70b-versatile";
-
-        const searchKeywords = ['aaj', 'today', 'news', 'khabar', 'price', 'match', 'score', 'latest', 'update', 'weather', 'mausam', 'kal', 'yesterday', 'current', 'stock', 'who won', 'kaun jeeta', 'batao', 'search', 'link', 'youtube', 'video', 'channel', 'instagram', 'linkedin', 'facebook', 'twitter', 'website', 'profile', 'account', 'url', 'site', 'browser', 'google'];
-        const needsSearch = searchKeywords.some(keyword => message.toLowerCase().includes(keyword));
-
-        if (needsSearch && !useVision) {
-            bubble.innerText = "Searching the web...";
-            try {
-                const tavilyRes = await fetch("https://api.tavily.com/search", { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ "api_key": TAVILY_API_KEY, "query": message, "search_depth": "basic", "max_results": 3 }) });
-                const tavilyData = await tavilyRes.json();
-                if (tavilyData && tavilyData.results && tavilyData.results.length > 0) {
-                    let searchResults = tavilyData.results.map(r => r.title + " (URL: " + r.url + ")\n" + r.content).join('\n\n');
-                    let internetContext = `System Note (Real-Time Internet Data): Here are the latest internet search results for the user's query. Use this to give an accurate, up-to-date answer. ALWAYS include the 'URL' provided below in your response starting with https:// so it is clickable:\n${searchResults}\n`;
-                    apiMessages.push({ "role": "system", "content": internetContext });
-                }
-            } catch(e) {}
-            bubble.innerText = "Thinking...";
-        }
+        // OFFICIALLY WORKING LLAMA-4-SCOUT MODEL INJECTED
+        const selectedModel = useVision ? "meta-llama/llama-4-scout-17b-16e-instruct" : "llama-3.3-70b-versatile";
 
         abortController = new AbortController();
-
         try {
-            const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+            const res = await fetch("[https://api.groq.com/openai/v1/chat/completions](https://api.groq.com/openai/v1/chat/completions)", {
                 method: 'POST', headers: { 'Authorization': `Bearer ${GROQ_API_KEY}`, 'Content-Type': 'application/json' }, signal: abortController.signal,
-                body: JSON.stringify({ 
-                    "messages": apiMessages, 
-                    "model": selectedModel,
-                    "max_tokens": 4096 
-                }) 
+                body: JSON.stringify({ "messages": apiMessages, "model": selectedModel })
             });
             
             if (!res.ok) {
-                const errData = await res.json();
-                throw new Error(errData.error?.message || `Server Error ${res.status}`);
+                let errMsg = `Server Error ${res.status}`;
+                try {
+                    const errData = await res.json();
+                    errMsg = errData.error?.message || errMsg;
+                } catch(e) {
+                    errMsg = `API overloaded or blocked by security (Status ${res.status}). Please try again.`;
+                }
+                throw new Error(errMsg);
             }
-            
+
             const data = await res.json();
-            
-            if (data.error || !data.choices || data.choices.length === 0) { 
-                throw new Error("API Limit Reached or Internal Error"); 
-            }
-            
-            const aiResponse = data.choices[0].message.content; const aiMsgIdx = chatHistory[activeChatIndex].messages.length;
-            chatHistory[activeChatIndex].messages.push({ role: "assistant", content: aiResponse }); aiRow.setAttribute('data-index', aiMsgIdx);
-            localStorage.setItem('datex_full_history', JSON.stringify(chatHistory)); bubble.innerHTML = ""; typeEffect(bubble, aiResponse, 5);
-            
+            const aiResponse = data.choices[0].message.content;
+            chatHistory[activeChatIndex].messages.push({ role: "assistant", content: aiResponse });
+            saveHistoryToDB(); aiRow.querySelector('.ai-bubble').innerHTML = ""; typeEffect(aiRow.querySelector('.ai-bubble'), aiResponse, 5);
         } catch (e) { 
-            if (e.name === 'AbortError') { 
-                bubble.innerText = "Generation stopped."; 
-            } else { 
-                bubble.innerText = "Server Error: " + e.message; 
+            if (e.name === 'AbortError') {
+                aiRow.querySelector('.ai-bubble').innerText = "Generation stopped.";
+            } else {
+                aiRow.querySelector('.ai-bubble').innerText = e.message; 
             }
             resetSendButton(); addAiActions(currentAiRow, true);
         }
     }
-
-    document.getElementById('user-input').addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' && !e.shiftKey) { if (window.innerWidth <= 768 || ('ontouchstart' in window)) { return; } e.preventDefault(); handleSendClick(); }
-    });
     </script>
 </body>
 </html>
