@@ -18,6 +18,7 @@
             width: 100%;
             margin: 0;
             padding: 0;
+            overscroll-behavior: none;
         }
 
         body { 
@@ -129,7 +130,7 @@
         
         .bubble-container { position: relative; max-width: 88%; display: flex; flex-direction: column; overflow: hidden; }
         .bubble { padding: 14px 20px; border-radius: 22px; font-size: 16px; line-height: 1.6; word-wrap: break-word; }
-        .user-bubble { background-color: #f3f4f6; color: #000; border-bottom-right-radius: 4px; }
+        .user-bubble { background-color: #f3f4f6; color: #000; border-bottom-right-radius: 4px; white-space: pre-wrap; }
         .ai-bubble { background-color: #fff; border: 1px solid #e5e7eb; border-bottom-left-radius: 4px; width: 100%; }
         .avatar { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; border: 1px solid #eee; flex-shrink: 0; }
 
@@ -141,6 +142,7 @@
             justify-content: center; 
             z-index: 100;
             flex-shrink: 0;
+            touch-action: none;
         }
         
         .input-bar-wrapper {
@@ -228,7 +230,7 @@
             flex: 1; 
             background: transparent; 
             border: none; 
-            padding: 10px 0; 
+            padding: 10px 12px 10px 0; 
             font-size: 16px; 
             outline: none; 
             min-width: 0; 
@@ -240,6 +242,7 @@
             height: 44px; 
             scrollbar-width: none; 
             -ms-overflow-style: none; 
+            touch-action: pan-y;
         }
         .input-bar textarea::-webkit-scrollbar {
             display: none; 
