@@ -408,17 +408,26 @@
              <i class="fas fa-times" onclick="toggleAttachmentMenu(event)"></i>
         </div>
         <div class="attachment-options-container">
-            <div class="attachment-option" onclick="triggerCamera()">
-                <div class="icon-box"><i class="fas fa-camera"></i></div>
-                <span>Camera</span>
+            <div class="attachment-option" style="cursor: default;">
+                <div class="icon-box" style="position: relative; background: #f0f0f0;">
+                    <i class="fas fa-camera" style="opacity: 0.2;"></i>
+                    <i class="fas fa-lock" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 28px; color: #555;"></i>
+                </div>
+                <span style="color: #999;">Camera</span>
             </div>
-            <div class="attachment-option" onclick="triggerGallery()">
-                <div class="icon-box"><i class="fas fa-image"></i></div>
-                <span>Photos</span>
+            <div class="attachment-option" style="cursor: default;">
+                <div class="icon-box" style="position: relative; background: #f0f0f0;">
+                    <i class="fas fa-image" style="opacity: 0.2;"></i>
+                    <i class="fas fa-lock" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 28px; color: #555;"></i>
+                </div>
+                <span style="color: #999;">Photos</span>
             </div>
-            <div class="attachment-option" onclick="triggerFiles()">
-                <div class="icon-box"><i class="fas fa-file-alt"></i></div>
-                <span>Files</span>
+            <div class="attachment-option" style="cursor: default;">
+                <div class="icon-box" style="position: relative; background: #f0f0f0;">
+                    <i class="fas fa-file-alt" style="opacity: 0.2;"></i>
+                    <i class="fas fa-lock" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 28px; color: #555;"></i>
+                </div>
+                <span style="color: #999;">Files</span>
             </div>
         </div>
     </div>
