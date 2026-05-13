@@ -159,7 +159,6 @@
             flex-direction: column;
             width: 100%;
             overflow: hidden;
-            position: relative; /* ADDED JUST TO HOLD OVERLAYS, DOES NOT BREAK BASE CSS */
         }
 
         .attachment-preview {
@@ -391,24 +390,6 @@
         .hidden-input {
             display: none;
         }
-
-        /* --- NEW VOICE AND LOCK UI (ADDED EXTERNALLY, DOES NOT TOUCH BASE CSS) --- */
-        .locked-attachment { opacity: 0.5; pointer-events: none; position: relative; }
-        .lock-badge { position: absolute; top: -5px; right: 5px; background: #ff4d4d; color: #fff; border-radius: 50%; width: 22px; height: 22px; display: flex; justify-content: center; align-items: center; font-size: 10px; border: 2px solid #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
-        
-        .recording-overlay {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: #f3f4f6; z-index: 20; display: none; align-items: center; justify-content: space-between; padding: 0 15px;
-        }
-        .wave-container { display: flex; gap: 4px; align-items: center; height: 24px; }
-        .wave-bar { width: 3px; height: 8px; background: #ff4d4d; border-radius: 2px; animation: wave 1s infinite ease-in-out; }
-        @keyframes wave { 0%, 100% { height: 8px; } 50% { height: 20px; } }
-        
-        .lock-indicator {
-            position: absolute; right: 12px; bottom: 60px; display: none; flex-direction: column; align-items: center;
-            background: #fff; padding: 10px; border-radius: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); z-index: 30; pointer-events: none;
-        }
-        @keyframes bounceUp { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
     </style>
 </head>
 <body onclick="hideMsgMenu()">
@@ -422,24 +403,20 @@
         <button id="delete-btn-ui" onclick="deleteSelectedMsg()" style="color:red;"><i class="fas fa-trash"></i> Delete</button>
     </div>
 
-    <!-- ATTACHMENT MENU (WITH LOCKS ADDED) -->
     <div class="attachment-menu" id="attachment-menu">
         <div class="attachment-menu-header">
              <i class="fas fa-times" onclick="toggleAttachmentMenu(event)"></i>
         </div>
         <div class="attachment-options-container">
-            <div class="attachment-option locked-attachment">
-                <div class="lock-badge"><i class="fas fa-lock"></i></div>
+            <div class="attachment-option" onclick="triggerCamera()">
                 <div class="icon-box"><i class="fas fa-camera"></i></div>
                 <span>Camera</span>
             </div>
-            <div class="attachment-option locked-attachment">
-                <div class="lock-badge"><i class="fas fa-lock"></i></div>
+            <div class="attachment-option" onclick="triggerGallery()">
                 <div class="icon-box"><i class="fas fa-image"></i></div>
                 <span>Photos</span>
             </div>
-            <div class="attachment-option locked-attachment">
-                <div class="lock-badge"><i class="fas fa-lock"></i></div>
+            <div class="attachment-option" onclick="triggerFiles()">
                 <div class="icon-box"><i class="fas fa-file-alt"></i></div>
                 <span>Files</span>
             </div>
@@ -449,9 +426,6 @@
     <input type="file" id="camera-input" class="hidden-input" accept="image/*" capture onchange="handleFileSelect(event)">
     <input type="file" id="gallery-input" class="hidden-input" accept="image/*" onchange="handleFileSelect(event)">
     <input type="file" id="file-input" class="hidden-input" accept=".pdf,.doc,.docx,.txt" onchange="handleFileSelect(event)">
-
-    <!-- Hidden global audio element for playback -->
-    <audio id="global-audio-player" style="display: none;"></audio>
 
     <div class="sidebar" id="sidebar">
         <div class="sidebar-content">
@@ -483,18 +457,6 @@
                 
                 <div class="chat-input-container">
                     
-                    <!-- NEW RECORDING OVERLAY (Hides over the input bar when active) -->
-                    <div id="recording-overlay" class="recording-overlay">
-                        <i class="fas fa-trash" style="color: #ff4d4d; font-size: 20px; padding: 10px; cursor: pointer;" onclick="cancelVoiceRecording()"></i>
-                        <div style="display: flex; align-items: center; gap: 8px;">
-                            <div class="wave-container">
-                                <div class="wave-bar"></div><div class="wave-bar" style="animation-delay:0.1s"></div><div class="wave-bar" style="animation-delay:0.2s"></div><div class="wave-bar" style="animation-delay:0.3s"></div><div class="wave-bar" style="animation-delay:0.4s"></div>
-                            </div>
-                            <span id="record-timer" style="font-size: 14px; font-weight: bold; color: #ff4d4d; width: 45px; text-align: center;">00:00</span>
-                        </div>
-                        <button class="send-btn" onclick="stopAndSendVoiceRecording()" style="background: #1a73e8; width: 38px; height: 38px; font-size: 16px; margin: 0;"><i class="fas fa-arrow-up"></i></button>
-                    </div>
-
                     <div id="attachment-preview" class="attachment-preview">
                         <img id="attachment-img-preview" src="">
                         <div id="attachment-file-preview" style="display: none; flex-direction: column; align-items: center; justify-content: center; height: 100%; width: 100%;">
@@ -504,8 +466,7 @@
                         <div class="remove-btn" onclick="removeAttachment()"><i class="fas fa-times"></i></div>
                     </div>
 
-                    <!-- YOUR ORIGINAL EXACT BASE INPUT BAR -->
-                    <div class="input-bar" id="standard-input-bar">
+                    <div class="input-bar">
                         <div style="height: 44px; display: flex; align-items: center; margin-right: 12px;">
                             <i class="fas fa-plus" onclick="toggleAttachmentMenu(event)" style="color:#777; cursor:pointer; font-size: 18px;"></i>
                         </div>
@@ -515,13 +476,6 @@
                             <button class="send-btn" onclick="handleSendClick()"><i class="fas fa-arrow-up"></i></button>
                         </div>
                     </div>
-                    
-                    <!-- NEW LOCK INDICATOR POPUP -->
-                    <div id="lock-indicator" class="lock-indicator">
-                        <i class="fas fa-lock" style="color: #555; margin-bottom: 8px; font-size: 16px;"></i>
-                        <i class="fas fa-chevron-up" style="color: #999; font-size: 14px; animation: bounceUp 1s infinite;"></i>
-                    </div>
-
                 </div>
 
             </div>
@@ -545,17 +499,21 @@
     }
 
     const GROQ_API_KEY = "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"; 
+    const TAVILY_API_KEY = "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"; 
 
     let chatHistory = JSON.parse(localStorage.getItem('datex_full_history')) || [];
     let isNewSession = true;
     let selectedMsgRow = null;
+    let isRecording = false;
     let activeChatIndex = -1;
+    let sessionFinalText = ""; 
     let editingMsgIdx = -1; 
     
     let isGenerating = false;
     let stopGenerationFlag = false;
     let abortController = null;
     let currentAiRow = null;
+
     let currentAttachmentData = null;
 
     document.getElementById('chat-container').addEventListener('scroll', () => {
@@ -644,6 +602,22 @@
         }
     }
 
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    let recognition;
+    if (SpeechRecognition) {
+        recognition = new SpeechRecognition();
+        recognition.interimResults = false; 
+        recognition.continuous = true;
+        recognition.onstart = () => { isRecording = true; sessionFinalText = document.getElementById('user-input').value; if (sessionFinalText.length > 0 && !sessionFinalText.endsWith(" ")) { sessionFinalText += " "; } const btn = document.getElementById('mike-btn'); btn.classList.add('recording'); btn.innerHTML = '<i class="fas fa-microphone"></i>'; };
+        recognition.onend = () => { isRecording = false; const btn = document.getElementById('mike-btn'); btn.classList.remove('recording'); btn.innerHTML = '<i class="fas fa-microphone"></i>'; };
+        recognition.onresult = (e) => { let interimTranscript = ""; for (let i = e.resultIndex; i < e.results.length; ++i) { if (e.results[i].isFinal) { sessionFinalText += e.results[i][0].transcript; } else { interimTranscript += e.results[i][0].transcript; } } const input = document.getElementById('user-input'); input.value = sessionFinalText + interimTranscript; autoGrow(input); };
+    }
+
+    document.getElementById('mike-btn').onclick = () => {
+        if (!recognition) return;
+        if (isRecording) { recognition.stop(); } else { recognition.start(); }
+    };
+
     window.onload = () => { 
         renderChatList(); 
         if(chatHistory.length === 0) createNewChat();
@@ -676,10 +650,7 @@
         const container = document.getElementById('chat-container');
         container.innerHTML = "";
         chatHistory[index].messages.forEach((msg, msgIdx) => {
-            if(msg.role === "user") { 
-                if(msg.audioData) addUserVoiceMessageToUI(msg.audioData, msg.audioTime, msgIdx);
-                else addUserMessageToUI(msg.content, false, msgIdx, msg.attachment); 
-            }
+            if(msg.role === "user") { addUserMessageToUI(msg.content, false, msgIdx, msg.attachment); }
             else { addAiMessageToUI(msg.content, false, msgIdx); }
         });
         if(shouldToggleSidebar) toggleSidebar();
@@ -733,31 +704,6 @@
         container.appendChild(row);
         container.scrollTop = container.scrollHeight;
     }
-
-    // --- NEW: RENDER VOICE MESSAGE BUBBLE IN CHAT ---
-    function addUserVoiceMessageToUI(audioData, audioTime, msgIdx) {
-        const container = document.getElementById('chat-container');
-        if(document.getElementById('welcome-screen')) document.getElementById('welcome-screen').remove();
-        
-        const row = document.createElement('div');
-        row.className = 'message-row user-row';
-        row.setAttribute('data-index', msgIdx); 
-        
-        row.innerHTML = `
-            <div class="bubble-container">
-                <div class="bubble user-bubble" style="display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 14px; background: transparent; border: 1px solid #ddd; width: 220px; border-radius: 20px;">
-                    <span style="font-size: 13px; font-weight: bold; color: #555;">${audioTime}</span>
-                    <div style="flex: 1; height: 2px; background: #999; margin: 0 5px;"></div>
-                    <button onclick="playAudio(this, '${audioData}')" style="width: 32px; height: 32px; border-radius: 50%; background: #000; color: #fff; border: none; cursor: pointer; display: flex; justify-content: center; align-items: center;"><i class="fas fa-play" style="margin-left: 2px;"></i></button>
-                </div>
-                <div class="action-bar user-action-bar">
-                    <button class="action-btn" onclick="openMenu(event, this)"><i class="fas fa-ellipsis-v"></i></button>
-                </div>
-            </div>`;
-        container.appendChild(row);
-        container.scrollTop = container.scrollHeight;
-    }
-    // --------------------------------------------------
 
     function addAiMessageToUI(text, isNew, msgIdx) {
         const container = document.getElementById('chat-container');
@@ -869,7 +815,7 @@
     }
 
     function copyCode(btn) { const code = btn.parentElement.querySelector('code').innerText; navigator.clipboard.writeText(code).then(() => { btn.innerText = "Copied!"; setTimeout(() => { btn.innerText = "Copy"; }, 2000); }); }
-    function escapeHTML(str) { return str.replace(/[&<>"']/g, function(m) { return { '&': '&', '<': '<', '>': '>', '"': '"', "'": ''' }[m]; }); }
+    function escapeHTML(str) { return str.replace(/[&<>"']/g, function(m) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]; }); }
 
     function formatLinksAndStyles(text) {
         let formatted = text;
@@ -918,7 +864,7 @@
                 } else {
                     let formattedSeg = formatLinksAndStyles(seg);
                     if (i < formattedSeg.length) {
-                        if (formattedSeg.charAt(i) === '<') { let tagEnd = formattedSeg.indexOf('>', i); if (tagEnd !== -1) { accumulatedHTML += formattedSeg.substring(i, tagEnd + 1); i = tagEnd + 1; } else { accumulatedHTML += '<'; i++; } } 
+                        if (formattedSeg.charAt(i) === '<') { let tagEnd = formattedSeg.indexOf('>', i); if (tagEnd !== -1) { accumulatedHTML += formattedSeg.substring(i, tagEnd + 1); i = tagEnd + 1; } else { accumulatedHTML += '&lt;'; i++; } } 
                         else { accumulatedHTML += (formattedSeg.charAt(i) === '\n') ? "<br>" : formattedSeg.charAt(i); i++; }
                         element.innerHTML = accumulatedHTML; setTimeout(typeNext, speed);
                     } else { i = 0; currentSeg++; setTimeout(typeNext, speed); }
@@ -941,233 +887,57 @@
         row.remove(); callDatexAPI(true);
     }
 
-    // ==========================================
-    // BRAND NEW ADVANCED SWIPE-TO-LOCK VOICE ENGINE
-    // ==========================================
-    let mediaRecorder = null;
-    let audioChunks = [];
-    let voiceTimerInterval = null;
-    let voiceSeconds = 0;
-    let isVoiceRecording = false;
-    let isMicLocked = false;
-    let isDragging = false;
-    let startY = 0;
+    async function callDatexAPI(isRegenerate = false) {
+        try { if (isRecording && recognition) { recognition.stop(); } } catch(e) {}
+        isRecording = false;
+        const btn = document.getElementById('mike-btn');
+        btn.classList.remove('recording'); btn.innerHTML = '<i class="fas fa-microphone"></i>';
 
-    const micBtn = document.getElementById('mike-btn');
-    const recordingOverlay = document.getElementById('recording-overlay');
-    const lockIndicator = document.getElementById('lock-indicator');
-    const recordTimerSpan = document.getElementById('record-timer');
-    const standardInputBar = document.getElementById('standard-input-bar');
-
-    micBtn.addEventListener('touchstart', async (e) => {
-        if(isGenerating) return;
-        e.preventDefault();
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            mediaRecorder = new MediaRecorder(stream);
-            audioChunks = [];
-            mediaRecorder.ondataavailable = event => { if(event.data.size > 0) audioChunks.push(event.data); };
-            mediaRecorder.onstop = () => {
-                if(isVoiceRecording) {
-                    const blob = new Blob(audioChunks, { type: 'audio/webm' });
-                    processVoiceBlob(blob);
-                }
-                stream.getTracks().forEach(t => t.stop());
-            };
-            mediaRecorder.start();
-            isVoiceRecording = true;
-            isMicLocked = false;
-            startY = e.touches[0].clientY;
-            isDragging = true;
-            
-            lockIndicator.style.display = 'flex';
-            micBtn.style.transform = 'scale(1.2)';
-            micBtn.style.color = '#ff4d4d';
-            
-            voiceSeconds = 0;
-            recordTimerSpan.innerText = "00:00";
-            voiceTimerInterval = setInterval(() => {
-                voiceSeconds++;
-                let m = Math.floor(voiceSeconds / 60).toString().padStart(2, '0');
-                let s = (voiceSeconds % 60).toString().padStart(2, '0');
-                recordTimerSpan.innerText = `${m}:${s}`;
-            }, 1000);
-        } catch(err) {
-            alert("Microphone access denied. Please allow permissions in your browser.");
-        }
-    }, {passive: false});
-
-    micBtn.addEventListener('touchmove', (e) => {
-        if(!isDragging || isMicLocked) return;
-        let currentY = e.touches[0].clientY;
-        if(startY - currentY > 50) { // User Dragged UP by 50px!
-            isMicLocked = true;
-            lockIndicator.style.display = 'none';
-            micBtn.style.transform = 'scale(1)';
-            micBtn.style.color = '#555';
-            standardInputBar.style.display = 'none'; // Hide base text input
-            recordingOverlay.style.display = 'flex'; // Show new overlay
-        }
-    }, {passive: false});
-
-    micBtn.addEventListener('touchend', (e) => {
-        if(!isDragging) return;
-        isDragging = false;
-        lockIndicator.style.display = 'none';
-        micBtn.style.transform = 'scale(1)';
-        micBtn.style.color = '#555';
-        
-        if(!isMicLocked && isVoiceRecording) {
-            // User released finger before locking -> STOP & SEND
-            if(mediaRecorder && mediaRecorder.state === 'recording') mediaRecorder.stop();
-        }
-    });
-
-    function cancelVoiceRecording() {
-        isVoiceRecording = false; // Mark as cancelled so it doesn't process
-        if(mediaRecorder && mediaRecorder.state === 'recording') mediaRecorder.stop();
-        resetVoiceUI();
-    }
-
-    function stopAndSendVoiceRecording() {
-        if(mediaRecorder && mediaRecorder.state === 'recording') mediaRecorder.stop();
-        resetVoiceUI();
-    }
-
-    function resetVoiceUI() {
-        recordingOverlay.style.display = 'none';
-        standardInputBar.style.display = 'flex';
-        lockIndicator.style.display = 'none';
-        clearInterval(voiceTimerInterval);
-        micBtn.style.transform = 'scale(1)';
-        micBtn.style.color = '#555';
-        isVoiceRecording = false;
-        isMicLocked = false;
-        isDragging = false;
-    }
-
-    let currentPlayingBtn = null;
-    function playAudio(btn, audioBase64) {
-        const player = document.getElementById('global-audio-player');
-        if(currentPlayingBtn === btn && !player.paused) {
-            player.pause();
-            btn.innerHTML = '<i class="fas fa-play" style="margin-left: 2px;"></i>';
-            return;
-        }
-        if(currentPlayingBtn) currentPlayingBtn.innerHTML = '<i class="fas fa-play" style="margin-left: 2px;"></i>';
-        player.src = audioBase64;
-        player.play();
-        btn.innerHTML = '<i class="fas fa-pause"></i>';
-        currentPlayingBtn = btn;
-        player.onended = () => {
-            btn.innerHTML = '<i class="fas fa-play" style="margin-left: 2px;"></i>';
-            currentPlayingBtn = null;
-        }
-    }
-
-    async function processVoiceBlob(blob) {
-        if(voiceSeconds < 1) return; // Ignore accidental short taps
-        
-        const reader = new FileReader();
-        reader.readAsDataURL(blob);
-        reader.onloadend = async () => {
-            const base64Audio = reader.result;
-            const timeStr = recordTimerSpan.innerText;
-            
-            // 1. Create New Session if needed & Push to UI
-            if (isNewSession) { chatHistory.push({ title: "Voice Chat", messages: [] }); activeChatIndex = chatHistory.length - 1; isNewSession = false; }
-            addUserVoiceMessageToUI(base64Audio, timeStr, chatHistory[activeChatIndex].messages.length);
-            
-            // 2. Add temporary AI Thinking UI
-            isGenerating = true;
-            const container = document.getElementById('chat-container');
-            const aiRow = document.createElement('div'); aiRow.className = 'message-row ai-row';
-            aiRow.innerHTML = `<img src="logo.jpg.jpg" class="avatar"><div class="bubble-container"><div class="bubble ai-bubble">Listening...</div></div>`;
-            container.appendChild(aiRow); currentAiRow = aiRow;
-            container.scrollTop = container.scrollHeight;
-            
-            try {
-                // 3. Send to Groq Whisper AI to Transcribe
-                const formData = new FormData();
-                formData.append("file", blob, "voice.webm");
-                formData.append("model", "whisper-large-v3");
-                
-                const transRes = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
-                    method: "POST", headers: { "Authorization": `Bearer ${GROQ_API_KEY}` }, body: formData
-                });
-                
-                if(!transRes.ok) throw new Error("Whisper Error");
-                const transData = await transRes.json();
-                const textMsg = transData.text || "Hello";
-                
-                // 4. Save to DB
-                chatHistory[activeChatIndex].messages.push({ role: "user", content: `[Voice Note]: ${textMsg}`, audioData: base64Audio, audioTime: timeStr });
-                saveHistoryToDB();
-                
-                // 5. Send recognized text to normal Chat AI
-                currentAiRow.querySelector('.ai-bubble').innerText = "Thinking...";
-                callDatexAPI(false, textMsg); // Bypass UI text read, send direct text
-
-            } catch(e) {
-                currentAiRow.querySelector('.ai-bubble').innerText = "Sorry, I couldn't hear that properly.";
-                isGenerating = false;
-            }
-        };
-    }
-    // ==========================================
-
-
-    async function callDatexAPI(isRegenerate = false, directTextOverride = null) {
         let message = "";
         let attachmentToSave = null;
         
-        // This is for Standard Text Chat
         if (!isRegenerate) {
-            if(directTextOverride) {
-                message = directTextOverride; // Used by Voice Engine
-            } else {
-                const input = document.getElementById('user-input');
-                message = input.value.trim();
-                
-                if (currentAttachmentData) {
-                    attachmentToSave = currentAttachmentData;
-                    removeAttachment(); 
-                }
-
-                if (!message && !attachmentToSave) return;
-                
-                sessionFinalText = ""; input.value = ""; input.style.height = "44px"; 
-
-                if (isNewSession) {
-                    const titleText = message ? message.substring(0, 30) : "Image Upload";
-                    const newChat = { title: titleText, messages: [] };
-                    chatHistory.push(newChat); activeChatIndex = chatHistory.length - 1; isNewSession = false;
-                } else if (editingMsgIdx !== -1) {
-                    chatHistory[activeChatIndex].messages.splice(editingMsgIdx); editingMsgIdx = -1; loadSelectedChat(activeChatIndex, false); 
-                }
-                
-                const currentMsgIdx = chatHistory[activeChatIndex].messages.length;
-                const msgObj = { role: "user", content: message };
-                if (attachmentToSave) msgObj.attachment = attachmentToSave;
-
-                chatHistory[activeChatIndex].messages.push(msgObj);
-                localStorage.setItem('datex_full_history', JSON.stringify(chatHistory));
-                
-                renderChatList();
-                addUserMessageToUI(message, false, currentMsgIdx, attachmentToSave);
-                
-                isGenerating = true; stopGenerationFlag = false;
-                const sendBtn = document.querySelector('.send-btn'); sendBtn.innerHTML = '<div class="stop-square"></div>';
-
-                const container = document.getElementById('chat-container');
-                const aiRow = document.createElement('div'); aiRow.className = 'message-row ai-row';
-                aiRow.innerHTML = `<img src="logo.jpg.jpg" class="avatar"><div class="bubble-container"><div class="bubble ai-bubble">Thinking...</div></div>`;
-                container.appendChild(aiRow); currentAiRow = aiRow;
+            const input = document.getElementById('user-input');
+            message = input.value.trim();
+            
+            if (currentAttachmentData) {
+                attachmentToSave = currentAttachmentData;
+                removeAttachment(); 
             }
+
+            if (!message && !attachmentToSave) return;
+            
+            sessionFinalText = ""; input.value = ""; input.style.height = "44px"; 
+
+            if (isNewSession) {
+                const titleText = message ? message.substring(0, 30) : "Image Upload";
+                const newChat = { title: titleText, messages: [] };
+                chatHistory.push(newChat); activeChatIndex = chatHistory.length - 1; isNewSession = false;
+            } else if (editingMsgIdx !== -1) {
+                chatHistory[activeChatIndex].messages.splice(editingMsgIdx); editingMsgIdx = -1; loadSelectedChat(activeChatIndex, false); 
+            }
+            
+            const currentMsgIdx = chatHistory[activeChatIndex].messages.length;
+            const msgObj = { role: "user", content: message };
+            if (attachmentToSave) msgObj.attachment = attachmentToSave;
+
+            chatHistory[activeChatIndex].messages.push(msgObj);
+            localStorage.setItem('datex_full_history', JSON.stringify(chatHistory));
+            
+            renderChatList();
+            addUserMessageToUI(message, false, currentMsgIdx, attachmentToSave);
         } else {
             const lastUserMsg = chatHistory[activeChatIndex].messages[chatHistory[activeChatIndex].messages.length - 1];
             if(lastUserMsg && lastUserMsg.role === 'user') { message = lastUserMsg.content; }
         }
+
+        isGenerating = true; stopGenerationFlag = false;
+        const sendBtn = document.querySelector('.send-btn'); sendBtn.innerHTML = '<div class="stop-square"></div>';
+
+        const container = document.getElementById('chat-container');
+        const aiRow = document.createElement('div'); aiRow.className = 'message-row ai-row';
+        aiRow.innerHTML = `<img src="logo.jpg.jpg" class="avatar"><div class="bubble-container"><div class="bubble ai-bubble">Thinking...</div></div>`;
+        container.appendChild(aiRow); const bubble = aiRow.querySelector('.ai-bubble'); currentAiRow = aiRow;
 
         const now = new Date();
         const dateStr = now.toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
@@ -1200,22 +970,49 @@ CRITICAL INSTRUCTIONS:
 
         if (hasValidMath) { dynamicSystemPrompt += `\n\n[CRITICAL SYSTEM OVERRIDE - MATH DETECTED]: The user has provided a mathematical expression. The absolute, mathematically proven correct answer is:\n${mathContext}\nDO NOT CALCULATE THIS YOURSELF. YOUR INTERNAL CALCULATOR IS BROKEN. YOU MUST COPY AND PASTE THIS EXACT NUMBER AS YOUR FINAL ANSWER. NO EXCEPTIONS.`; }
 
-        // WE ARE NOW PURELY A TEXT CONVERSATION BOT
+        let useVision = false;
         let apiMessages = [ { "role": "system", "content": dynamicSystemPrompt } ];
         chatHistory[activeChatIndex].messages.forEach(msg => {
             if (msg.role === 'user') {
-                let textContent = msg.content || "";
-                if (msg.attachment && msg.attachment.type === 'file') {
-                    textContent = `[System Note: User has attached a document named "${msg.attachment.name}"]\n` + textContent;
+                if (msg.attachment && msg.attachment.type === 'image') {
+                    useVision = true;
+                    apiMessages.push({
+                        role: 'user',
+                        content: [
+                            { type: "text", text: msg.content ? msg.content : "Please analyze this image." },
+                            { type: "image_url", image_url: { url: msg.attachment.data } }
+                        ]
+                    });
+                } else {
+                    let textContent = msg.content || "";
+                    if (msg.attachment && msg.attachment.type === 'file') {
+                        textContent = `[System Note: User has attached a document named "${msg.attachment.name}"]\n` + textContent;
+                    }
+                    apiMessages.push({ role: 'user', content: textContent });
                 }
-                apiMessages.push({ role: 'user', content: textContent });
             } else {
                 apiMessages.push({ role: 'assistant', content: msg.content });
             }
         });
 
-        // USING STABLE TEXT MODEL
-        const selectedModel = "llama-3.3-70b-versatile";
+        const selectedModel = useVision ? "llama-3.2-11b-vision-preview" : "llama-3.3-70b-versatile";
+
+        const searchKeywords = ['aaj', 'today', 'news', 'khabar', 'price', 'match', 'score', 'latest', 'update', 'weather', 'mausam', 'kal', 'yesterday', 'current', 'stock', 'who won', 'kaun jeeta', 'batao', 'search', 'link', 'youtube', 'video', 'channel', 'instagram', 'linkedin', 'facebook', 'twitter', 'website', 'profile', 'account', 'url', 'site', 'browser', 'google'];
+        const needsSearch = searchKeywords.some(keyword => message.toLowerCase().includes(keyword));
+
+        if (needsSearch && !useVision) {
+            bubble.innerText = "Searching the web...";
+            try {
+                const tavilyRes = await fetch("https://api.tavily.com/search", { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ "api_key": TAVILY_API_KEY, "query": message, "search_depth": "basic", "max_results": 3 }) });
+                const tavilyData = await tavilyRes.json();
+                if (tavilyData && tavilyData.results && tavilyData.results.length > 0) {
+                    let searchResults = tavilyData.results.map(r => r.title + " (URL: " + r.url + ")\n" + r.content).join('\n\n');
+                    let internetContext = `System Note (Real-Time Internet Data): Here are the latest internet search results for the user's query. Use this to give an accurate, up-to-date answer. ALWAYS include the 'URL' provided below in your response starting with https:// so it is clickable:\n${searchResults}\n`;
+                    apiMessages.push({ "role": "system", "content": internetContext });
+                }
+            } catch(e) {}
+            bubble.innerText = "Thinking...";
+        }
 
         abortController = new AbortController();
 
@@ -1241,14 +1038,14 @@ CRITICAL INSTRUCTIONS:
             }
             
             const aiResponse = data.choices[0].message.content; const aiMsgIdx = chatHistory[activeChatIndex].messages.length;
-            chatHistory[activeChatIndex].messages.push({ role: "assistant", content: aiResponse }); currentAiRow.setAttribute('data-index', aiMsgIdx);
-            localStorage.setItem('datex_full_history', JSON.stringify(chatHistory)); currentAiRow.querySelector('.ai-bubble').innerHTML = ""; typeEffect(currentAiRow.querySelector('.ai-bubble'), aiResponse, 5);
+            chatHistory[activeChatIndex].messages.push({ role: "assistant", content: aiResponse }); aiRow.setAttribute('data-index', aiMsgIdx);
+            localStorage.setItem('datex_full_history', JSON.stringify(chatHistory)); bubble.innerHTML = ""; typeEffect(bubble, aiResponse, 5);
             
         } catch (e) { 
             if (e.name === 'AbortError') { 
-                currentAiRow.querySelector('.ai-bubble').innerText = "Generation stopped."; 
+                bubble.innerText = "Generation stopped."; 
             } else { 
-                currentAiRow.querySelector('.ai-bubble').innerText = "Server Error: " + e.message; 
+                bubble.innerText = "Server Error: " + e.message; 
             }
             resetSendButton(); addAiActions(currentAiRow, true);
         }
