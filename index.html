@@ -29,7 +29,6 @@
             position: fixed; 
             top: 0;
             left: 0;
-            /* COMPLETELY DISABLED BLUE HIGHLIGHT & LONG PRESS EVERYWHERE (100% STRICT LOCK) */
             -webkit-touch-callout: none !important; 
             -webkit-user-select: none !important; 
             -moz-user-select: none !important; 
@@ -38,7 +37,6 @@
         }
 
         textarea, input {
-            /* ONLY INPUT AREA IS SELECTABLE */
             -webkit-user-select: auto !important;
             -moz-user-select: auto !important;
             -ms-user-select: auto !important;
@@ -627,7 +625,7 @@
         }, 300);
     });
 
-    // GROQ API KEY
+    // TERI NAYI GROQ API KEY
     const GROQ_API_KEY = "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"; 
     const TAVILY_API_KEY = "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"; 
 
@@ -691,8 +689,8 @@
                     img.onload = function() {
                         const canvas = document.createElement('canvas');
                         
-                        // SMART COMPRESSION TO PREVENT 4MB PAYLOAD CRASH (405 Error Fix)
-                        const MAX_DIMENSION = 800;
+                        // SMART SCALING: Fixes 405/413 Payload Errors!
+                        const MAX_DIMENSION = 1024;
                         let width = img.width;
                         let height = img.height;
 
@@ -713,7 +711,7 @@
                         const ctx = canvas.getContext('2d');
                         ctx.drawImage(img, 0, 0, width, height);
                         
-                        const optimizedBase64 = canvas.toDataURL('image/jpeg', 0.6); 
+                        const optimizedBase64 = canvas.toDataURL('image/jpeg', 0.7); 
 
                         currentAttachments.push({ type: 'image', name: file.name, data: optimizedBase64 });
                         renderAttachmentPreview();
@@ -867,10 +865,9 @@
 
     function cleanOldTags(text) {
         if(!text) return "";
-        return text.replace(/\[System Note: User attached files previously\]\n?/g, "").trim();
+        return text.replace(/\[System Instructions:.*?\]\n\nUser Query: /g, "").replace(/\[User attached files previously\]\n?/g, "").trim();
     }
 
-    // MULTIPLE BUBBLES FOR IMAGES (GEMINI STYLE)
     function addUserMessageToUI(text, isTyping, msgIdx, attachments = []) {
         const container = document.getElementById('chat-container');
         if(document.getElementById('welcome-screen')) document.getElementById('welcome-screen').remove();
@@ -883,6 +880,7 @@
                 
                 let attHtml = '';
                 if (att.type === 'image') {
+                    // VERTICAL STACK FOR IMAGES (GEMINI STYLE)
                     attHtml = `<img src="${att.data}" onclick="openLightbox(this.src)" style="width: 100%; max-width: 250px; border-radius: 12px; object-fit: contain; background: transparent; cursor: pointer; display: block;">`;
                 } else {
                     attHtml = `<div style="display: flex; align-items: center; gap: 6px;"><i class="fas fa-file-pdf" style="color: #1a73e8; font-size: 24px;"></i><span style="font-size: 13px; font-weight: 500; color:#333; max-width: 150px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${att.name}</span></div>`;
@@ -1044,7 +1042,8 @@
         container.appendChild(aiRow); currentAiRow = aiRow;
 
         let useVision = false;
-        let apiMessages = [{ "role": "system", "content": "You are DATEX AI. You have Vision. Analyse images strictly. Safety ON." }];
+        let apiMessages = [];
+        let sysPrompt = "You are DATEX AI. You have Vision. Analyse images strictly. Safety ON.";
         
         const totalMsgs = chatHistory[activeChatIndex].messages.length;
         
@@ -1057,11 +1056,13 @@
                 if (isLastMessage && atts.length > 0) {
                     let imgCount = 0;
                     let contentArray = [];
-                    if (cleanMsgText) contentArray.push({ type: "text", text: cleanMsgText });
-                    else contentArray.push({ type: "text", text: "Analyze the attached images." });
+                    
+                    // 🔥 THE MASTER FIX: Groq Vision models DO NOT support 'system' messages. 
+                    // So we bypass this by pretending the system prompt is part of the user's first message!
+                    let finalUserText = `[System Instructions: ${sysPrompt}]\n\nUser Query: ` + (cleanMsgText || "Analyze the attached images.");
+                    contentArray.push({ type: "text", text: finalUserText });
                     
                     atts.forEach(att => {
-                        // Max 5 images to prevent API overload
                         if (att.type === 'image' && imgCount < 5) { 
                             contentArray.push({ type: "image_url", image_url: { url: att.data } });
                             useVision = true;
@@ -1071,7 +1072,7 @@
                     apiMessages.push({ role: 'user', content: contentArray });
                 } else {
                     let historyText = cleanMsgText;
-                    if (atts.length > 0) historyText = `[System Note: User attached files previously]\n` + historyText;
+                    if (atts.length > 0) historyText = `[User attached files previously]\n` + historyText;
                     apiMessages.push({ role: 'user', content: historyText });
                 }
             } else {
@@ -1079,14 +1080,22 @@
             }
         });
 
-        // OFFICIALLY WORKING LLAMA-4-SCOUT MODEL INJECTED
+        // Add normal system message ONLY if vision is NOT used
+        if (!useVision) {
+            apiMessages.unshift({ "role": "system", "content": sysPrompt });
+        }
+
         const selectedModel = useVision ? "meta-llama/llama-4-scout-17b-16e-instruct" : "llama-3.3-70b-versatile";
 
         abortController = new AbortController();
         try {
             const res = await fetch("[https://api.groq.com/openai/v1/chat/completions](https://api.groq.com/openai/v1/chat/completions)", {
                 method: 'POST', headers: { 'Authorization': `Bearer ${GROQ_API_KEY}`, 'Content-Type': 'application/json' }, signal: abortController.signal,
-                body: JSON.stringify({ "messages": apiMessages, "model": selectedModel })
+                body: JSON.stringify({ 
+                    "messages": apiMessages, 
+                    "model": selectedModel,
+                    "max_tokens": 4000
+                })
             });
             
             if (!res.ok) {
