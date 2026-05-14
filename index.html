@@ -594,7 +594,7 @@
         resizeHandler();
     }
 
-    const GROQ_API_KEY = "YAHAN_APNI_NAYI_GROQ_KEY_DAALO"; 
+    const GROQ_API_KEY = "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"; 
     const TAVILY_API_KEY = "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"; 
 
     let chatHistory = JSON.parse(localStorage.getItem('datex_full_history')) || [];
@@ -796,7 +796,7 @@
 
         vnHoldTimer = setTimeout(() => {
             if (vnIsDragging && !isVoiceNoteActive) {
-                dragLockUi.classList.add('active'); // Hold kiya toh bubbles dikhenge
+                dragLockUi.classList.add('active'); // Show bubbles on hold
             }
         }, 200); 
     });
@@ -813,7 +813,7 @@
             clearTimeout(vnHoldTimer);
             dragLockUi.classList.remove('active');
             
-            if (isRecording && recognition) recognition.stop(); // Stop dictation if it was running
+            if (isRecording && recognition) recognition.stop(); // Stop original dictation if running
             startVoiceNoteRecord();
         }
     });
