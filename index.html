@@ -19,6 +19,10 @@
             margin: 0;
             padding: 0;
             overscroll-behavior: none;
+            overflow: hidden; 
+            position: fixed; 
+            top: 0;
+            left: 0;
         }
 
         body { 
@@ -26,11 +30,6 @@
             color: #333; 
             display: flex; 
             flex-direction: column;
-            overflow: hidden; 
-            position: fixed; 
-            top: 0;
-            left: 0;
-            /* COMPLETELY DISABLED BLUE HIGHLIGHT & LONG PRESS EVERYWHERE (100% STRICT LOCK) */
             -webkit-touch-callout: none !important; 
             -webkit-user-select: none !important; 
             -moz-user-select: none !important; 
@@ -39,7 +38,6 @@
         }
 
         textarea, input {
-            /* ONLY INPUT AREA IS SELECTABLE */
             -webkit-user-select: auto !important;
             -moz-user-select: auto !important;
             -ms-user-select: auto !important;
@@ -146,11 +144,10 @@
             position: relative;
         }
         
-        /* THE DRAG LOCK BUBBLES UI (Hand-drawn style) */
         .drag-lock-ui {
             position: absolute;
             bottom: 60px;
-            right: 90px; /* Aligned exactly above the Mic button */
+            right: 90px;
             display: none;
             flex-direction: column;
             align-items: center;
@@ -275,7 +272,6 @@
             display: none; 
         }
 
-        /* NEW BLACK THEME VOICE NOTE RECORDING UI (Pill + Stop button) */
         .recording-ui {
             display: none; flex: 1; align-items: center; gap: 10px; 
             padding: 0; height: 44px; color: #333; margin-right: 10px;
@@ -309,7 +305,6 @@
         .send-btn-container { display:flex; align-items:center; height: 44px; }
         .send-btn { width: 44px; height: 44px; border-radius: 50%; display: flex; justify-content: center; align-items: center; cursor: pointer; border: none; flex-shrink: 0; background: #000; color: #fff; margin-left: 12px; font-size: 18px; }
         
-        /* ORIGINAL RECORDING CLASS FOR TEXT-TO-SPEECH (UNTOUCHED) */
         #mike-btn.recording { background-color: #000 !important; color: #fff !important; }
         
         .stop-square { width: 12px; height: 12px; background: #fff; border-radius: 2px; }
@@ -586,7 +581,6 @@
         }
     });
 
-    // FIX: Lock Visual Viewport perfectly on Android
     if (window.visualViewport) {
         const resizeHandler = () => {
             document.documentElement.style.height = window.visualViewport.height + 'px';
@@ -594,7 +588,7 @@
             window.scrollTo(0, 0);
         };
         window.visualViewport.addEventListener('resize', resizeHandler);
-        window.visualViewport.addEventListener('scroll', resizeHandler); // Lock scrolling of viewport
+        window.visualViewport.addEventListener('scroll', resizeHandler);
         resizeHandler();
     }
 
@@ -606,7 +600,6 @@
     let selectedMsgRow = null;
     let activeChatIndex = -1;
     let editingMsgIdx = -1; 
-    let sessionFinalText = "";
     
     let isGenerating = false;
     let stopGenerationFlag = false;
@@ -697,7 +690,6 @@
         }
     }
 
-    // --- Custom Audio Player Logic (WITH PROGRESS DOT FIX) ---
     let globalAudioPlayer = null;
     let currentPlayingBtn = null;
 
@@ -741,58 +733,64 @@
 
 
     // =========================================================
-    // 1. ORIGINAL TEXT-TO-SPEECH LOGIC (UNTOUCHED)
+    // 1. FIXED TEXT-TO-SPEECH LOGIC (NON-LIVE)
     // =========================================================
-    let isRecording = false; 
+    let isDictating = false; 
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     let recognition;
     
     if (SpeechRecognition) {
         recognition = new SpeechRecognition();
-        recognition.interimResults = true; // FIX: Allows text to show while speaking instantly
+        recognition.interimResults = false; 
         recognition.continuous = true;
+        
         recognition.onstart = () => { 
-            isRecording = true; 
-            sessionFinalText = document.getElementById('user-input').value; 
-            if (sessionFinalText.length > 0 && !sessionFinalText.endsWith(" ")) { sessionFinalText += " "; } 
+            isDictating = true; 
             const btn = document.getElementById('mike-btn'); 
             btn.classList.add('recording'); 
         };
+        
         recognition.onend = () => { 
-            isRecording = false; 
+            isDictating = false; 
             const btn = document.getElementById('mike-btn'); 
             btn.classList.remove('recording'); 
         };
+        
         recognition.onresult = (e) => { 
-            let interimTranscript = ""; 
+            let finalTranscript = ""; 
             for (let i = e.resultIndex; i < e.results.length; ++i) { 
-                if (e.results[i].isFinal) { sessionFinalText += e.results[i][0].transcript; } 
-                else { interimTranscript += e.results[i][0].transcript; } 
-            } 
-            const input = document.getElementById('user-input'); 
-            input.value = sessionFinalText + interimTranscript; 
-            autoGrow(input); 
+                if (e.results[i].isFinal) { 
+                    finalTranscript += e.results[i][0].transcript; 
+                } 
+            }
+            if (finalTranscript) {
+                const input = document.getElementById('user-input'); 
+                if (input.value.length > 0 && !input.value.endsWith(" ")) {
+                    input.value += " ";
+                }
+                input.value += finalTranscript; 
+                autoGrow(input); 
+            }
         };
+        
+        recognition.onerror = (e) => {
+            console.error("Speech error: " + e.error);
+            isDictating = false;
+            document.getElementById('mike-btn').classList.remove('recording'); 
+        }
     }
 
     let ignoreNextClick = false; 
-    document.getElementById('mike-btn').onclick = (e) => {
+    document.getElementById('mike-btn').onclick = () => {
         if (ignoreNextClick) {
             ignoreNextClick = false;
             return;
         }
-        if (!recognition) return alert("Speech Recognition not supported.");
-        try {
-            if (isRecording) { 
-                recognition.stop(); 
-            } else { 
-                recognition.start(); 
-            }
-        } catch (err) {
-            isRecording = false;
-            recognition.stop();
-            document.getElementById('mike-btn').classList.remove('recording');
+        if (!recognition) {
+            alert("Speech recognition is not supported in this browser.");
+            return;
         }
+        if (isDictating) { recognition.stop(); } else { recognition.start(); }
     };
 
 
@@ -819,11 +817,7 @@
     const recWave = document.getElementById('rec-wave');
     const dragLockUi = document.getElementById('drag-lock-ui');
 
-    // FIX: Using reliable touchstart/mousedown instead of pointer events to prevent blocking native clicks
-    micBtn.addEventListener('touchstart', handleMicPress, {passive: true});
-    micBtn.addEventListener('mousedown', handleMicPress);
-
-    function handleMicPress(e) {
+    micBtn.addEventListener('pointerdown', (e) => {
         if (isVoiceNoteActive || isGenerating || currentAttachmentData?.type === 'audio') return;
         vnPointerStartY = e.clientY || (e.touches && e.touches[0].clientY);
         vnIsDragging = true;
@@ -833,14 +827,10 @@
             if (vnIsDragging && !isVoiceNoteActive) {
                 dragLockUi.classList.add('active'); 
             }
-        }, 300); 
-    }
+        }, 200); 
+    });
 
-    // Handle Movement
-    window.addEventListener('touchmove', handleMicMove, {passive: true});
-    window.addEventListener('mousemove', handleMicMove);
-
-    function handleMicMove(e) {
+    micBtn.addEventListener('pointermove', (e) => {
         if (!vnIsDragging || isVoiceNoteActive) return;
         let currentY = e.clientY || (e.touches && e.touches[0].clientY);
         let diff = vnPointerStartY - currentY;
@@ -851,20 +841,22 @@
             clearTimeout(vnHoldTimer);
             dragLockUi.classList.remove('active');
             
-            if (isRecording && recognition) recognition.stop(); 
+            if (isDictating && recognition) recognition.stop(); 
             startVoiceNoteRecord();
         }
-    }
+    });
 
-    // Handle Release
-    window.addEventListener('touchend', handleMicRelease);
-    window.addEventListener('mouseup', handleMicRelease);
-
-    function handleMicRelease(e) {
+    micBtn.addEventListener('pointerup', (e) => {
         vnIsDragging = false;
         clearTimeout(vnHoldTimer);
         dragLockUi.classList.remove('active');
-    }
+    });
+
+    micBtn.addEventListener('pointercancel', (e) => {
+        vnIsDragging = false;
+        clearTimeout(vnHoldTimer);
+        dragLockUi.classList.remove('active');
+    });
 
 
     async function startVoiceNoteRecord() {
@@ -1324,7 +1316,6 @@
                 
                 if (wData.text) {
                     message = wData.text; 
-                    // Update internal message for AI, but do NOT show on UI
                     chatHistory[activeChatIndex].messages[chatHistory[activeChatIndex].messages.length - 1].content = message;
                     localStorage.setItem('datex_full_history', JSON.stringify(chatHistory));
                 } else {
