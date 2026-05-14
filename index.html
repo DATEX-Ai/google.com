@@ -150,7 +150,7 @@
         .drag-lock-ui {
             position: absolute;
             bottom: 60px;
-            right: 22px; 
+            right: 90px; /* Aligned exactly above the Mic button */
             display: none;
             flex-direction: column;
             align-items: center;
@@ -274,16 +274,16 @@
             display: none; 
         }
 
-        /* NEW BLACK THEME VOICE NOTE RECORDING UI */
+        /* NEW BLACK THEME VOICE NOTE RECORDING UI (Pill + Stop button) */
         .recording-ui {
-            display: none; flex: 1; align-items: center; gap: 8px; 
-            padding: 0; height: 44px; margin-right: 8px;
+            display: none; flex: 1; align-items: center; gap: 10px; 
+            padding: 0; height: 44px; color: #333; margin-right: 10px;
         }
         .recording-ui.active { display: flex; }
         
         .recording-pill {
-            flex: 1; background: #f0f0f0; height: 40px; border-radius: 20px; 
-            display: flex; align-items: center; padding: 0 12px; justify-content: space-between; border: 1px solid #ddd;
+            flex: 1; background: #e5e7eb; height: 40px; border-radius: 20px; 
+            display: flex; align-items: center; padding: 0 15px; justify-content: space-between; border: 1px solid #ddd;
         }
 
         .wave-animation { display: flex; gap: 3px; align-items: center; height: 20px; flex: 1; justify-content: center; margin: 0 10px; }
@@ -298,18 +298,20 @@
         @keyframes pulseWave { 0%, 100% { height: 5px; } 50% { height: 16px; } }
 
         .rec-stop-btn {
-            width: 36px; height: 36px; border-radius: 50%; background: #333; 
+            width: 40px; height: 40px; border-radius: 50%; background: #000; 
             display: flex; justify-content: center; align-items: center; cursor: pointer; flex-shrink: 0;
         }
-        .stop-square-inner { width: 12px; height: 12px; background: #fff; border-radius: 2px; }
         
+        #mike-btn-container { display:flex; align-items:center; height: 44px; }
         #mike-btn { width: 44px; height: 44px; border-radius: 50%; display: flex; justify-content: center; align-items: center; cursor: pointer; font-size: 20px; color: #555; background: transparent; transition: 0.2s; }
         
         .send-btn-container { display:flex; align-items:center; height: 44px; }
-        .send-btn { width: 44px; height: 44px; border-radius: 50%; display: flex; justify-content: center; align-items: center; cursor: pointer; border: none; flex-shrink: 0; background: #000; color: #fff; margin-left: 5px; font-size: 18px; }
+        .send-btn { width: 44px; height: 44px; border-radius: 50%; display: flex; justify-content: center; align-items: center; cursor: pointer; border: none; flex-shrink: 0; background: #000; color: #fff; margin-left: 12px; font-size: 18px; }
         
         /* ORIGINAL RECORDING CLASS FOR TEXT-TO-SPEECH (UNTOUCHED) */
         #mike-btn.recording { background-color: #000 !important; color: #fff !important; }
+        
+        .stop-square { width: 12px; height: 12px; background: #fff; border-radius: 2px; }
 
         pre { 
             background: #1e1e1e; 
@@ -553,16 +555,16 @@
                             <div class="recording-pill">
                                 <i class="fas fa-trash-alt" onclick="cancelVoiceNoteRecord()" style="color: #555; cursor: pointer; font-size: 16px;"></i>
                                 <div class="wave-animation" id="rec-wave">
-                                    <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
+                                    <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
                                 </div>
                                 <span id="recording-timer" style="font-size: 14px; font-weight: 600; color: #333; min-width: 35px; text-align: right;">0:00</span>
                             </div>
                             <div id="rec-stop-btn" class="rec-stop-btn" onclick="stopVoiceNoteMidway()">
-                                <div class="stop-square-inner"></div>
+                                <i class="fas fa-stop" style="color: #fff; font-size: 14px;"></i>
                             </div>
                         </div>
 
-                        <div class="actions-right" style="display:flex; align-items:center; height: 44px;">
+                        <div id="mike-btn-container">
                             <div id="mike-btn"><i class="fas fa-microphone"></i></div>
                         </div>
 
@@ -777,6 +779,7 @@
     let vnHoldTimer = null;
 
     const micBtn = document.getElementById('mike-btn');
+    const micBtnContainer = document.getElementById('mike-btn-container');
     const txtArea = document.getElementById('user-input');
     const recUi = document.getElementById('recording-ui');
     const recTimerDisplay = document.getElementById('recording-timer');
@@ -793,7 +796,7 @@
 
         vnHoldTimer = setTimeout(() => {
             if (vnIsDragging && !isVoiceNoteActive) {
-                dragLockUi.classList.add('active'); // Show bubbles on hold
+                dragLockUi.classList.add('active'); // Hold kiya toh bubbles dikhenge
             }
         }, 200); 
     });
@@ -810,7 +813,7 @@
             clearTimeout(vnHoldTimer);
             dragLockUi.classList.remove('active');
             
-            if (isRecording && recognition) recognition.stop(); // Stop original dictation if running
+            if (isRecording && recognition) recognition.stop(); // Stop dictation if it was running
             startVoiceNoteRecord();
         }
     });
@@ -838,9 +841,9 @@
             isVoiceNoteActive = true;
             isSendingAudio = false;
             
-            // UI changes for Voice Note
+            // Show new UI, hide input & mic
             txtArea.style.display = 'none';
-            micBtn.style.display = 'none'; // Hide mic
+            micBtnContainer.style.display = 'none';
             recUi.classList.add('active');
             recStopBtn.style.display = 'flex'; 
             recWave.classList.add('playing');
@@ -897,7 +900,7 @@
         isVoiceNoteActive = false;
         clearInterval(recTimerInterval);
         txtArea.style.display = 'block';
-        micBtn.style.display = 'flex'; // Show mic back
+        micBtnContainer.style.display = 'flex'; // Show mic back
         recUi.classList.remove('active');
         dragLockUi.classList.remove('active');
     }
