@@ -13,17 +13,12 @@
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; -webkit-tap-highlight-color: transparent; }
         
-        /* FIX: 100% Locked Viewport */
         html, body {
             height: 100%;
             width: 100%;
             margin: 0;
             padding: 0;
             overscroll-behavior: none;
-            overflow: hidden; 
-            position: fixed; 
-            top: 0;
-            left: 0;
         }
 
         body { 
@@ -31,6 +26,10 @@
             color: #333; 
             display: flex; 
             flex-direction: column;
+            overflow: hidden; 
+            position: fixed; 
+            top: 0;
+            left: 0;
             /* COMPLETELY DISABLED BLUE HIGHLIGHT & LONG PRESS EVERYWHERE (100% STRICT LOCK) */
             -webkit-touch-callout: none !important; 
             -webkit-user-select: none !important; 
@@ -270,7 +269,6 @@
             scrollbar-width: none; 
             -ms-overflow-style: none; 
             touch-action: pan-y;
-            /* FIX: Prevents textarea drag from pulling the whole page */
             overscroll-behavior: none;
         }
         .input-bar textarea::-webkit-scrollbar {
@@ -751,7 +749,7 @@
     
     if (SpeechRecognition) {
         recognition = new SpeechRecognition();
-        recognition.interimResults = false; 
+        recognition.interimResults = true; // FIX: Allows text to show while speaking instantly
         recognition.continuous = true;
         recognition.onstart = () => { 
             isRecording = true; 
@@ -759,13 +757,11 @@
             if (sessionFinalText.length > 0 && !sessionFinalText.endsWith(" ")) { sessionFinalText += " "; } 
             const btn = document.getElementById('mike-btn'); 
             btn.classList.add('recording'); 
-            btn.innerHTML = '<i class="fas fa-microphone"></i>'; 
         };
         recognition.onend = () => { 
             isRecording = false; 
             const btn = document.getElementById('mike-btn'); 
             btn.classList.remove('recording'); 
-            btn.innerHTML = '<i class="fas fa-microphone"></i>'; 
         };
         recognition.onresult = (e) => { 
             let interimTranscript = ""; 
@@ -780,13 +776,23 @@
     }
 
     let ignoreNextClick = false; 
-    document.getElementById('mike-btn').onclick = () => {
+    document.getElementById('mike-btn').onclick = (e) => {
         if (ignoreNextClick) {
             ignoreNextClick = false;
             return;
         }
-        if (!recognition) return;
-        if (isRecording) { recognition.stop(); } else { recognition.start(); }
+        if (!recognition) return alert("Speech Recognition not supported.");
+        try {
+            if (isRecording) { 
+                recognition.stop(); 
+            } else { 
+                recognition.start(); 
+            }
+        } catch (err) {
+            isRecording = false;
+            recognition.stop();
+            document.getElementById('mike-btn').classList.remove('recording');
+        }
     };
 
 
@@ -813,7 +819,11 @@
     const recWave = document.getElementById('rec-wave');
     const dragLockUi = document.getElementById('drag-lock-ui');
 
-    micBtn.addEventListener('pointerdown', (e) => {
+    // FIX: Using reliable touchstart/mousedown instead of pointer events to prevent blocking native clicks
+    micBtn.addEventListener('touchstart', handleMicPress, {passive: true});
+    micBtn.addEventListener('mousedown', handleMicPress);
+
+    function handleMicPress(e) {
         if (isVoiceNoteActive || isGenerating || currentAttachmentData?.type === 'audio') return;
         vnPointerStartY = e.clientY || (e.touches && e.touches[0].clientY);
         vnIsDragging = true;
@@ -823,10 +833,14 @@
             if (vnIsDragging && !isVoiceNoteActive) {
                 dragLockUi.classList.add('active'); 
             }
-        }, 200); 
-    });
+        }, 300); 
+    }
 
-    micBtn.addEventListener('pointermove', (e) => {
+    // Handle Movement
+    window.addEventListener('touchmove', handleMicMove, {passive: true});
+    window.addEventListener('mousemove', handleMicMove);
+
+    function handleMicMove(e) {
         if (!vnIsDragging || isVoiceNoteActive) return;
         let currentY = e.clientY || (e.touches && e.touches[0].clientY);
         let diff = vnPointerStartY - currentY;
@@ -840,19 +854,17 @@
             if (isRecording && recognition) recognition.stop(); 
             startVoiceNoteRecord();
         }
-    });
+    }
 
-    micBtn.addEventListener('pointerup', (e) => {
+    // Handle Release
+    window.addEventListener('touchend', handleMicRelease);
+    window.addEventListener('mouseup', handleMicRelease);
+
+    function handleMicRelease(e) {
         vnIsDragging = false;
         clearTimeout(vnHoldTimer);
         dragLockUi.classList.remove('active');
-    });
-
-    micBtn.addEventListener('pointercancel', (e) => {
-        vnIsDragging = false;
-        clearTimeout(vnHoldTimer);
-        dragLockUi.classList.remove('active');
-    });
+    }
 
 
     async function startVoiceNoteRecord() {
@@ -1086,7 +1098,6 @@
             } else {
                 copyBtn.style.display = 'flex';
                 
-                // Only allow editing if it's the LAST user message in the chat
                 let allUserRows = Array.from(document.querySelectorAll('.message-row.user-row'));
                 let isLastUserMsg = (selectedMsgRow === allUserRows[allUserRows.length - 1]);
                 
