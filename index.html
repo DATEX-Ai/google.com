@@ -13,12 +13,17 @@
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; -webkit-tap-highlight-color: transparent; }
         
+        /* FIX: 100% Locked Viewport */
         html, body {
             height: 100%;
             width: 100%;
             margin: 0;
             padding: 0;
             overscroll-behavior: none;
+            overflow: hidden; 
+            position: fixed; 
+            top: 0;
+            left: 0;
         }
 
         body { 
@@ -26,10 +31,6 @@
             color: #333; 
             display: flex; 
             flex-direction: column;
-            overflow: hidden; 
-            position: fixed; 
-            top: 0;
-            left: 0;
             /* COMPLETELY DISABLED BLUE HIGHLIGHT & LONG PRESS EVERYWHERE (100% STRICT LOCK) */
             -webkit-touch-callout: none !important; 
             -webkit-user-select: none !important; 
@@ -269,6 +270,8 @@
             scrollbar-width: none; 
             -ms-overflow-style: none; 
             touch-action: pan-y;
+            /* FIX: Prevents textarea drag from pulling the whole page */
+            overscroll-behavior: none;
         }
         .input-bar textarea::-webkit-scrollbar {
             display: none; 
@@ -585,12 +588,15 @@
         }
     });
 
+    // FIX: Lock Visual Viewport perfectly on Android
     if (window.visualViewport) {
         const resizeHandler = () => {
+            document.documentElement.style.height = window.visualViewport.height + 'px';
             document.body.style.height = window.visualViewport.height + 'px';
             window.scrollTo(0, 0);
         };
         window.visualViewport.addEventListener('resize', resizeHandler);
+        window.visualViewport.addEventListener('scroll', resizeHandler); // Lock scrolling of viewport
         resizeHandler();
     }
 
@@ -693,16 +699,36 @@
         }
     }
 
-    // --- Custom Audio Player Logic ---
+    // --- Custom Audio Player Logic (WITH PROGRESS DOT FIX) ---
     let globalAudioPlayer = null;
+    let currentPlayingBtn = null;
+
     function playAudioBubble(btn, url) {
         if(globalAudioPlayer && globalAudioPlayer.src !== url) {
             globalAudioPlayer.pause();
             document.querySelectorAll('.play-btn-icon').forEach(i => i.className = 'fas fa-play play-btn-icon');
+            if (currentPlayingBtn) {
+                let oldDot = currentPlayingBtn.nextElementSibling.querySelector('div');
+                if (oldDot) oldDot.style.left = '0%';
+            }
         }
         if(!globalAudioPlayer || globalAudioPlayer.src !== url) {
             globalAudioPlayer = new Audio(url);
-            globalAudioPlayer.onended = () => { btn.querySelector('i').className = 'fas fa-play play-btn-icon'; };
+            currentPlayingBtn = btn;
+            
+            globalAudioPlayer.onended = () => { 
+                btn.querySelector('i').className = 'fas fa-play play-btn-icon'; 
+                let dot = btn.nextElementSibling.querySelector('div');
+                if(dot) dot.style.left = '0%';
+            };
+            
+            globalAudioPlayer.ontimeupdate = () => {
+                let dot = btn.nextElementSibling.querySelector('div');
+                if(dot && globalAudioPlayer.duration) {
+                    let percent = (globalAudioPlayer.currentTime / globalAudioPlayer.duration) * 100;
+                    dot.style.left = `calc(${percent}% - 4px)`;
+                }
+            };
         }
         
         let icon = btn.querySelector('i');
@@ -719,7 +745,7 @@
     // =========================================================
     // 1. ORIGINAL TEXT-TO-SPEECH LOGIC (UNTOUCHED)
     // =========================================================
-    let isRecording = false; // text-to-speech variable
+    let isRecording = false; 
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     let recognition;
     
@@ -787,7 +813,6 @@
     const recWave = document.getElementById('rec-wave');
     const dragLockUi = document.getElementById('drag-lock-ui');
 
-    // Combine pointer events for both mobile touch & PC mouse
     micBtn.addEventListener('pointerdown', (e) => {
         if (isVoiceNoteActive || isGenerating || currentAttachmentData?.type === 'audio') return;
         vnPointerStartY = e.clientY || (e.touches && e.touches[0].clientY);
@@ -796,7 +821,7 @@
 
         vnHoldTimer = setTimeout(() => {
             if (vnIsDragging && !isVoiceNoteActive) {
-                dragLockUi.classList.add('active'); // Show bubbles on hold
+                dragLockUi.classList.add('active'); 
             }
         }, 200); 
     });
@@ -807,13 +832,12 @@
         let diff = vnPointerStartY - currentY;
 
         if (diff > 40) {
-            // Dragged up enough -> Lock and Start Voice Note
             vnIsDragging = false;
-            ignoreNextClick = true; // Stop native click from firing Original Text-To-Speech
+            ignoreNextClick = true; 
             clearTimeout(vnHoldTimer);
             dragLockUi.classList.remove('active');
             
-            if (isRecording && recognition) recognition.stop(); // Stop original dictation if running
+            if (isRecording && recognition) recognition.stop(); 
             startVoiceNoteRecord();
         }
     });
@@ -841,7 +865,6 @@
             isVoiceNoteActive = true;
             isSendingAudio = false;
             
-            // Show new UI, hide input & mic
             txtArea.style.display = 'none';
             micBtnContainer.style.display = 'none';
             recUi.classList.add('active');
@@ -866,11 +889,10 @@
                     callDatexAPI();
                     resetVoiceNoteUI();
                 } else {
-                    // Stopped midway, wait for user to hit send or delete
                     isVoiceNoteActive = false; 
                     clearInterval(recTimerInterval);
                     recWave.classList.remove('playing');
-                    recStopBtn.style.display = 'none'; // Hide stop button
+                    recStopBtn.style.display = 'none'; 
                 }
             };
             
@@ -900,7 +922,7 @@
         isVoiceNoteActive = false;
         clearInterval(recTimerInterval);
         txtArea.style.display = 'block';
-        micBtnContainer.style.display = 'flex'; // Show mic back
+        micBtnContainer.style.display = 'flex'; 
         recUi.classList.remove('active');
         dragLockUi.classList.remove('active');
     }
@@ -979,7 +1001,6 @@
                     <span style="font-size: 13px; font-weight: 500; color: #333; max-width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${attachment.name}</span>
                 </div>`;
             } else if (attachment.type === 'audio') {
-                // Neutral Black Voice Bubble matching drawing
                 let dur = attachment.duration || "0:02";
                 attachmentHTML = `
                 <div style="background: #f0f0f0; padding: 6px 12px; border-radius: 22px; display: flex; align-items: center; gap: 10px; width: 200px; margin-bottom: 6px; border: 1px solid #ddd;">
@@ -987,7 +1008,7 @@
                         <i class="fas fa-play play-btn-icon" style="color: #fff; margin-left: 2px; font-size: 13px;"></i>
                     </div>
                     <div style="flex: 1; height: 2px; background: #bbb; position: relative;">
-                        <div style="position: absolute; left: 0; top: -3px; width: 8px; height: 8px; border-radius: 50%; background: #333;"></div>
+                        <div style="position: absolute; left: 0; top: -3px; width: 8px; height: 8px; border-radius: 50%; background: #333; transition: left 0.1s linear;"></div>
                     </div>
                     <span style="font-size: 12px; color: #333; font-weight: 500; min-width: 25px;">${dur}</span>
                 </div>`;
@@ -997,7 +1018,7 @@
         row.innerHTML = `<div class="bubble-container">
                             <div class="bubble user-bubble" style="display: flex; flex-direction: column;">
                                 ${attachmentHTML}
-                                <span class="user-msg-text" style="${(attachment && attachment.type === 'audio' && !text) ? 'display:none;' : ''}">${text ? text : ''}</span>
+                                <span class="user-msg-text" style="${(attachment && attachment.type === 'audio') ? 'display:none !important;' : ''}">${text ? text : ''}</span>
                             </div>
                             <div class="action-bar user-action-bar">
                                 <button class="action-btn" onclick="openMenu(event, this)"><i class="fas fa-ellipsis-v"></i></button>
@@ -1036,6 +1057,7 @@
         }
     }
 
+    // --- CONTEXT MENU (3-DOTS) FIXES ---
     function openMenu(e, btn) {
         e.stopPropagation(); 
         const menu = document.getElementById('msg-menu');
@@ -1044,12 +1066,37 @@
         if (menu.style.display === 'flex' && selectedMsgRow === row) { hideMsgMenu(); return; }
 
         selectedMsgRow = row;
+        const copyBtn = document.getElementById('copy-btn-ui');
         const editBtn = document.getElementById('edit-btn-ui');
         const deleteBtn = document.getElementById('delete-btn-ui');
-        let isUser = selectedMsgRow.classList.contains('user-row');
         
-        if(!isUser) { editBtn.style.display = 'none'; deleteBtn.style.display = 'none'; } 
-        else { editBtn.style.display = 'flex'; deleteBtn.style.display = 'flex'; }
+        let isUser = selectedMsgRow.classList.contains('user-row');
+        let hasAudio = selectedMsgRow.innerHTML.includes('playAudioBubble');
+
+        if(!isUser) { 
+            editBtn.style.display = 'none'; 
+            deleteBtn.style.display = 'none'; 
+            copyBtn.style.display = 'flex';
+        } else { 
+            deleteBtn.style.display = 'flex'; 
+            
+            if (hasAudio) {
+                editBtn.style.display = 'none';
+                copyBtn.style.display = 'none';
+            } else {
+                copyBtn.style.display = 'flex';
+                
+                // Only allow editing if it's the LAST user message in the chat
+                let allUserRows = Array.from(document.querySelectorAll('.message-row.user-row'));
+                let isLastUserMsg = (selectedMsgRow === allUserRows[allUserRows.length - 1]);
+                
+                if(isLastUserMsg) {
+                    editBtn.style.display = 'flex';
+                } else {
+                    editBtn.style.display = 'none';
+                }
+            }
+        }
         
         const rect = btn.getBoundingClientRect();
         let x = isUser ? (rect.left - 140) : (rect.right + 5);
@@ -1183,15 +1230,12 @@
         if (isGenerating) { 
             stopGeneration(); 
         } else if (isVoiceNoteActive) {
-            // Direct Send while recording
             isSendingAudio = true;
             if(vnMediaRecorder && vnMediaRecorder.state !== 'inactive') vnMediaRecorder.stop();
         } else if (currentAttachmentData && currentAttachmentData.type === 'audio') {
-            // Send after stopping midway
             callDatexAPI();
             resetVoiceNoteUI();
         } else { 
-            // Normal Text/Image Send
             callDatexAPI(); 
         } 
     }
@@ -1268,20 +1312,10 @@
                 const wData = await wRes.json();
                 
                 if (wData.text) {
-                    message = wData.text; // Update the message text for Llama
-                    // Save text in history so user sees it
+                    message = wData.text; 
+                    // Update internal message for AI, but do NOT show on UI
                     chatHistory[activeChatIndex].messages[chatHistory[activeChatIndex].messages.length - 1].content = message;
                     localStorage.setItem('datex_full_history', JSON.stringify(chatHistory));
-                    
-                    // Update UI text below audio player
-                    const userRow = document.querySelector(`.user-row[data-index="${chatHistory[activeChatIndex].messages.length - 1}"]`);
-                    if(userRow) {
-                        const textSpan = userRow.querySelector('.user-msg-text');
-                        if(textSpan) {
-                            textSpan.innerText = message;
-                            textSpan.style.display = 'block';
-                        }
-                    }
                 } else {
                     throw new Error("Empty audio");
                 }
