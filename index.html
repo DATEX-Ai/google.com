@@ -143,6 +143,7 @@
             z-index: 100;
             flex-shrink: 0;
             touch-action: none;
+            position: relative;
         }
         
         .input-bar-wrapper {
@@ -150,6 +151,7 @@
             max-width: 720px; 
             display: flex;
             flex-direction: column; 
+            position: relative;
         }
 
         .chat-input-container {
@@ -161,6 +163,7 @@
             flex-direction: column;
             width: 100%;
             overflow: hidden;
+            position: relative;
         }
 
         .attachment-preview {
@@ -248,10 +251,34 @@
             display: none; 
         }
         
+        /* New Recording UI Styles */
+        .recording-ui {
+            display: none; flex: 1; align-items: center; gap: 10px; 
+            padding: 10px 0; height: 44px; color: #d93025; font-weight: 600;
+        }
+        .recording-ui.active { display: flex; }
+        .wave-animation { display: flex; gap: 3px; align-items: center; height: 20px; }
+        .wave-bar { width: 3px; height: 5px; background: #1a73e8; border-radius: 2px; animation: pulseWave 1s infinite ease-in-out; }
+        .wave-bar:nth-child(2) { animation-delay: 0.1s; }
+        .wave-bar:nth-child(3) { animation-delay: 0.2s; }
+        .wave-bar:nth-child(4) { animation-delay: 0.3s; }
+        .wave-bar:nth-child(5) { animation-delay: 0.4s; }
+        @keyframes pulseWave { 0%, 100% { height: 5px; } 50% { height: 18px; } }
+        
+        .lock-box {
+            position: absolute; bottom: 70px; right: 25px;
+            background: #fff; border: 1px solid #ddd; border-radius: 30px;
+            padding: 15px 12px; display: none; flex-direction: column; align-items: center;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1); gap: 10px; z-index: 50;
+            opacity: 0; transition: opacity 0.2s;
+        }
+        .lock-box i { color: #888; font-size: 16px; }
+        .lock-box.active { display: flex; opacity: 1; }
+
         #mike-btn, .send-btn { width: 44px; height: 44px; border-radius: 50%; display: flex; justify-content: center; align-items: center; cursor: pointer; border: none; flex-shrink: 0; }
-        #mike-btn { font-size: 20px; color: #555; background: transparent; }
+        #mike-btn { font-size: 20px; color: #555; background: transparent; transition: transform 0.2s; }
         .send-btn { background: #000; color: #fff; margin-left: 10px; font-size: 18px; }
-        #mike-btn.recording { background-color: #000 !important; color: #fff !important; }
+        #mike-btn.recording { transform: scale(1.1); color: #d93025; }
         .stop-square { width: 12px; height: 12px; background: #fff; border-radius: 2px; }
 
         pre { 
@@ -465,6 +492,10 @@
         </main>
 
         <div class="bottom-container">
+            <div id="lock-box" class="lock-box">
+                <i class="fas fa-lock"></i>
+                <i class="fas fa-chevron-up"></i>
+            </div>
             <div class="input-bar-wrapper">
                 
                 <div class="chat-input-container">
@@ -480,9 +511,19 @@
 
                     <div class="input-bar">
                         <div style="height: 44px; display: flex; align-items: center; margin-right: 12px;">
-                            <i class="fas fa-plus" onclick="toggleAttachmentMenu(event)" style="color:#777; cursor:pointer; font-size: 18px;"></i>
+                            <i id="plus-btn" class="fas fa-plus" onclick="toggleAttachmentMenu(event)" style="color:#777; cursor:pointer; font-size: 18px;"></i>
                         </div>
+                        
                         <textarea id="user-input" placeholder="Ask DATEX AI..." rows="1" oninput="autoGrow(this)"></textarea>
+                        
+                        <div id="recording-ui" class="recording-ui">
+                            <i class="fas fa-circle" style="font-size: 10px; animation: pulseWave 1s infinite;"></i>
+                            <span id="recording-timer">0:00</span>
+                            <div class="wave-animation">
+                                <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
+                            </div>
+                        </div>
+
                         <div class="actions-right" style="display:flex; align-items:center; height: 44px;">
                             <div id="mike-btn"><i class="fas fa-microphone"></i></div>
                             <button class="send-btn" onclick="handleSendClick()"><i class="fas fa-arrow-up"></i></button>
@@ -510,15 +551,13 @@
         resizeHandler();
     }
 
-    const NEW_API_KEY = "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"; 
+    const GROQ_API_KEY = "YAHAN_APNI_NAYI_GROQ_KEY_DAALO"; 
     const TAVILY_API_KEY = "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"; 
 
     let chatHistory = JSON.parse(localStorage.getItem('datex_full_history')) || [];
     let isNewSession = true;
     let selectedMsgRow = null;
-    let isRecording = false;
     let activeChatIndex = -1;
-    let sessionFinalText = ""; 
     let editingMsgIdx = -1; 
     
     let isGenerating = false;
@@ -537,6 +576,10 @@
 
     function toggleAttachmentMenu(e) {
         if(e) e.stopPropagation();
+        if(isRecordingAudio) {
+            cancelAudioRecord(); // Plus button cancels recording if active
+            return;
+        }
         const menu = document.getElementById('attachment-menu');
         const overlay = document.getElementById('attachment-overlay');
         if (menu.classList.contains('active')) {
@@ -547,10 +590,6 @@
             overlay.classList.add('active');
         }
     }
-
-    function triggerCamera() { document.getElementById('camera-input').click(); toggleAttachmentMenu(); }
-    function triggerGallery() { document.getElementById('gallery-input').click(); toggleAttachmentMenu(); }
-    function triggerFiles() { document.getElementById('file-input').click(); toggleAttachmentMenu(); }
 
     function handleFileSelect(event) {
         const file = event.target.files[0];
@@ -614,21 +653,102 @@
         }
     }
 
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    let recognition;
-    if (SpeechRecognition) {
-        recognition = new SpeechRecognition();
-        recognition.interimResults = false; 
-        recognition.continuous = true;
-        recognition.onstart = () => { isRecording = true; sessionFinalText = document.getElementById('user-input').value; if (sessionFinalText.length > 0 && !sessionFinalText.endsWith(" ")) { sessionFinalText += " "; } const btn = document.getElementById('mike-btn'); btn.classList.add('recording'); btn.innerHTML = '<i class="fas fa-microphone"></i>'; };
-        recognition.onend = () => { isRecording = false; const btn = document.getElementById('mike-btn'); btn.classList.remove('recording'); btn.innerHTML = '<i class="fas fa-microphone"></i>'; };
-        recognition.onresult = (e) => { let interimTranscript = ""; for (let i = e.resultIndex; i < e.results.length; ++i) { if (e.results[i].isFinal) { sessionFinalText += e.results[i][0].transcript; } else { interimTranscript += e.results[i][0].transcript; } } const input = document.getElementById('user-input'); input.value = sessionFinalText + interimTranscript; autoGrow(input); };
+    // --- NEW AUDIO RECORDING LOGIC (MEDIA RECORDER) ---
+    let mediaRecorder;
+    let audioChunks = [];
+    let isRecordingAudio = false;
+    let recordingLocked = false;
+    let recTimerInterval;
+    let recSeconds = 0;
+    let startY = 0;
+
+    const micBtn = document.getElementById('mike-btn');
+    const lockBox = document.getElementById('lock-box');
+    const txtArea = document.getElementById('user-input');
+    const recUi = document.getElementById('recording-ui');
+    const recTimerDisplay = document.getElementById('recording-timer');
+    const plusBtn = document.getElementById('plus-btn');
+
+    async function startAudioRecord() {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            mediaRecorder = new MediaRecorder(stream);
+            audioChunks = [];
+            mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
+            mediaRecorder.start();
+            isRecordingAudio = true;
+            recordingLocked = false;
+            
+            // Update UI
+            txtArea.style.display = 'none';
+            recUi.classList.add('active');
+            micBtn.classList.add('recording');
+            plusBtn.className = "fas fa-trash-alt"; // change plus to trash to cancel
+            
+            recSeconds = 0;
+            recTimerDisplay.innerText = "0:00";
+            recTimerInterval = setInterval(() => {
+                recSeconds++;
+                let m = Math.floor(recSeconds / 60);
+                let s = recSeconds % 60;
+                recTimerDisplay.innerText = `${m}:${s < 10 ? '0' : ''}${s}`;
+            }, 1000);
+            
+            lockBox.innerHTML = '<i class="fas fa-lock"></i><i class="fas fa-chevron-up"></i>';
+            lockBox.classList.add('active');
+
+        } catch (err) {
+            alert("Microphone permission denied! Please allow access.");
+        }
     }
 
-    document.getElementById('mike-btn').onclick = () => {
-        if (!recognition) return;
-        if (isRecording) { recognition.stop(); } else { recognition.start(); }
-    };
+    function cancelAudioRecord() {
+        if(mediaRecorder && mediaRecorder.state !== 'inactive') { mediaRecorder.stop(); }
+        resetAudioUI();
+    }
+
+    function resetAudioUI() {
+        isRecordingAudio = false;
+        recordingLocked = false;
+        clearInterval(recTimerInterval);
+        txtArea.style.display = 'block';
+        recUi.classList.remove('active');
+        micBtn.classList.remove('recording');
+        lockBox.classList.remove('active');
+        plusBtn.className = "fas fa-plus";
+    }
+
+    // Touch events for Drag to Lock
+    micBtn.addEventListener('touchstart', (e) => {
+        if(isRecordingAudio || isGenerating) return;
+        startY = e.touches[0].clientY;
+        startAudioRecord();
+    }, {passive: false});
+
+    micBtn.addEventListener('touchmove', (e) => {
+        if(!isRecordingAudio || recordingLocked) return;
+        let currentY = e.touches[0].clientY;
+        if(startY - currentY > 50) {
+            // Dragged up! Lock the recording
+            recordingLocked = true;
+            lockBox.innerHTML = '<i class="fas fa-lock" style="color:#1a73e8;"></i>';
+            setTimeout(() => { lockBox.classList.remove('active'); }, 1000);
+        }
+    }, {passive: false});
+
+    micBtn.addEventListener('touchend', (e) => {
+        if(!isRecordingAudio) return;
+        lockBox.classList.remove('active');
+        if(!recordingLocked) {
+            cancelAudioRecord(); // Cancel if released without locking
+        }
+    });
+
+    // Mouse events fallback for PC
+    micBtn.addEventListener('mousedown', (e) => { if(!isRecordingAudio && !isGenerating) startAudioRecord(); });
+    micBtn.addEventListener('mouseup', (e) => { if(isRecordingAudio && !recordingLocked) cancelAudioRecord(); });
+
+    // ---------------------------------------------------
 
     window.onload = () => { 
         renderChatList(); 
@@ -695,11 +815,16 @@
         if (attachment) {
             if (attachment.type === 'image') {
                 attachmentHTML = `<img src="${attachment.data}" style="width: 100%; max-width: 250px; border-radius: 12px; margin-bottom: 8px; object-fit: cover;">`;
-            } else {
+            } else if (attachment.type === 'file') {
                 attachmentHTML = `
                 <div style="display: flex; align-items: center; gap: 10px; background: #e5e7eb; padding: 10px 14px; border-radius: 12px; margin-bottom: 8px;">
                     <i class="fas fa-file-pdf" style="color: #1a73e8; font-size: 24px;"></i>
                     <span style="font-size: 13px; font-weight: 500; color: #333; max-width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${attachment.name}</span>
+                </div>`;
+            } else if (attachment.type === 'audio') {
+                attachmentHTML = `
+                <div style="background: #e5e7eb; padding: 8px 12px; border-radius: 20px; display: flex; align-items: center; margin-bottom: 8px; border: 1px solid #ddd;">
+                    <audio controls src="${attachment.url}" style="height: 35px; width: 200px; outline: none;"></audio>
                 </div>`;
             }
         }
@@ -707,7 +832,7 @@
         row.innerHTML = `<div class="bubble-container">
                             <div class="bubble user-bubble" style="display: flex; flex-direction: column;">
                                 ${attachmentHTML}
-                                ${text ? `<span>${text}</span>` : ''}
+                                <span class="user-msg-text">${text ? text : ''}</span>
                             </div>
                             <div class="action-bar user-action-bar">
                                 <button class="action-btn" onclick="openMenu(event, this)"><i class="fas fa-ellipsis-v"></i></button>
@@ -785,7 +910,7 @@
         autoGrow(input); 
         input.focus(); 
         
-        if (msgObj.attachment) {
+        if (msgObj.attachment && msgObj.attachment.type !== 'audio') {
             currentAttachmentData = msgObj.attachment;
             const previewContainer = document.getElementById('attachment-preview');
             const imgPreview = document.getElementById('attachment-img-preview');
@@ -889,7 +1014,27 @@
         typeNext();
     }
 
-    function handleSendClick() { if (isGenerating) { stopGeneration(); } else { callDatexAPI(); } }
+    function handleSendClick() { 
+        if (isGenerating) { 
+            stopGeneration(); 
+        } else if (isRecordingAudio) {
+            // Send Audio
+            if(mediaRecorder && mediaRecorder.state !== 'inactive') {
+                mediaRecorder.onstop = () => {
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    const audioUrl = URL.createObjectURL(audioBlob);
+                    currentAttachmentData = { type: 'audio', name: 'Voice Note', data: audioBlob, url: audioUrl };
+                    callDatexAPI();
+                };
+                mediaRecorder.stop();
+                resetAudioUI();
+            }
+        } else { 
+            // Send Text/Image
+            callDatexAPI(); 
+        } 
+    }
+    
     function stopGeneration() { stopGenerationFlag = true; if (abortController) { abortController.abort(); } resetSendButton(); if (currentAiRow) { addAiActions(currentAiRow, true); } }
     function resetSendButton() { isGenerating = false; const sendBtn = document.querySelector('.send-btn'); if(sendBtn) { sendBtn.innerHTML = '<i class="fas fa-arrow-up"></i>'; } }
     
@@ -900,11 +1045,6 @@
     }
 
     async function callDatexAPI(isRegenerate = false) {
-        try { if (isRecording && recognition) { recognition.stop(); } } catch(e) {}
-        isRecording = false;
-        const btn = document.getElementById('mike-btn');
-        btn.classList.remove('recording'); btn.innerHTML = '<i class="fas fa-microphone"></i>';
-
         let message = "";
         let attachmentToSave = null;
         
@@ -919,10 +1059,10 @@
 
             if (!message && !attachmentToSave) return;
             
-            sessionFinalText = ""; input.value = ""; input.style.height = "44px"; 
+            input.value = ""; input.style.height = "44px"; 
 
             if (isNewSession) {
-                const titleText = message ? message.substring(0, 30) : "Image Upload";
+                const titleText = message ? message.substring(0, 30) : (attachmentToSave && attachmentToSave.type==='audio' ? "Voice Note" : "Image Upload");
                 const newChat = { title: titleText, messages: [] };
                 chatHistory.push(newChat); activeChatIndex = chatHistory.length - 1; isNewSession = false;
             } else if (editingMsgIdx !== -1) {
@@ -940,7 +1080,7 @@
             addUserMessageToUI(message, false, currentMsgIdx, attachmentToSave);
         } else {
             const lastUserMsg = chatHistory[activeChatIndex].messages[chatHistory[activeChatIndex].messages.length - 1];
-            if(lastUserMsg && lastUserMsg.role === 'user') { message = lastUserMsg.content; }
+            if(lastUserMsg && lastUserMsg.role === 'user') { message = lastUserMsg.content; attachmentToSave = lastUserMsg.attachment; }
         }
 
         isGenerating = true; stopGenerationFlag = false;
@@ -950,6 +1090,43 @@
         const aiRow = document.createElement('div'); aiRow.className = 'message-row ai-row';
         aiRow.innerHTML = `<img src="logo.jpg.jpg" class="avatar"><div class="bubble-container"><div class="bubble ai-bubble">Thinking...</div></div>`;
         container.appendChild(aiRow); const bubble = aiRow.querySelector('.ai-bubble'); currentAiRow = aiRow;
+
+        // If audio, transcribe it first
+        if (attachmentToSave && attachmentToSave.type === 'audio' && !isRegenerate) {
+            bubble.innerText = "Transcribing voice note...";
+            try {
+                const fd = new FormData();
+                fd.append('file', attachmentToSave.data, 'voicenote.webm');
+                fd.append('model', 'whisper-large-v3');
+                
+                const wRes = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${GROQ_API_KEY}` },
+                    body: fd
+                });
+                const wData = await wRes.json();
+                
+                if (wData.text) {
+                    message = wData.text; // Update the message text for Llama
+                    // Save text in history so user sees it
+                    chatHistory[activeChatIndex].messages[chatHistory[activeChatIndex].messages.length - 1].content = message;
+                    localStorage.setItem('datex_full_history', JSON.stringify(chatHistory));
+                    
+                    // Update UI text below audio player
+                    const userRow = document.querySelector(`.user-row[data-index="${chatHistory[activeChatIndex].messages.length - 1}"]`);
+                    if(userRow) {
+                        const textSpan = userRow.querySelector('.user-msg-text');
+                        if(textSpan) textSpan.innerText = message;
+                    }
+                } else {
+                    throw new Error("Empty audio");
+                }
+            } catch(err) {
+                bubble.innerText = "Error: Could not transcribe voice note. Please check your API key.";
+                resetSendButton(); addAiActions(currentAiRow, true); return;
+            }
+            bubble.innerText = "Thinking...";
+        }
 
         const now = new Date();
         const dateStr = now.toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
@@ -1000,6 +1177,7 @@ CRITICAL INSTRUCTIONS:
                     if (msg.attachment && msg.attachment.type === 'file') {
                         textContent = `[System Note: User has attached a document named "${msg.attachment.name}"]\n` + textContent;
                     }
+                    // Audio transciption becomes text content automatically now
                     apiMessages.push({ role: 'user', content: textContent });
                 }
             } else {
@@ -1007,8 +1185,7 @@ CRITICAL INSTRUCTIONS:
             }
         });
 
-        // ChatGPT (gpt-4o) ke liye model change kiya
-        const selectedModel = useVision ? "openai/gpt-4o" : "openai/gpt-4o";
+        const selectedModel = useVision ? "llama-3.2-11b-vision-preview" : "llama-3.3-70b-versatile";
 
         const searchKeywords = ['aaj', 'today', 'news', 'khabar', 'price', 'match', 'score', 'latest', 'update', 'weather', 'mausam', 'kal', 'yesterday', 'current', 'stock', 'who won', 'kaun jeeta', 'batao', 'search', 'link', 'youtube', 'video', 'channel', 'instagram', 'linkedin', 'facebook', 'twitter', 'website', 'profile', 'account', 'url', 'site', 'browser', 'google'];
         const needsSearch = searchKeywords.some(keyword => message.toLowerCase().includes(keyword));
@@ -1030,9 +1207,8 @@ CRITICAL INSTRUCTIONS:
         abortController = new AbortController();
 
         try {
-            // Groq ke API URL ki jagah OpenRouter ka URL daala
-            const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-                method: 'POST', headers: { 'Authorization': `Bearer ${NEW_API_KEY}`, 'Content-Type': 'application/json' }, signal: abortController.signal,
+            const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+                method: 'POST', headers: { 'Authorization': `Bearer ${GROQ_API_KEY}`, 'Content-Type': 'application/json' }, signal: abortController.signal,
                 body: JSON.stringify({ 
                     "messages": apiMessages, 
                     "model": selectedModel,
