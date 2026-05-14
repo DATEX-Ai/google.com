@@ -146,6 +146,29 @@
             position: relative;
         }
         
+        /* THE DRAG LOCK BUBBLES UI */
+        .drag-lock-ui {
+            position: absolute;
+            bottom: 60px;
+            right: 20px;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            z-index: 150;
+        }
+        .drag-lock-ui.active { display: flex; }
+        .lock-circle {
+            width: 44px; height: 44px; background: #fff; border-radius: 50%; 
+            display: flex; justify-content: center; align-items: center; 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15); font-size: 18px; color: #555; 
+            margin-bottom: 5px; border: 1px solid #eee;
+        }
+        .drag-lock-ui .dot { width: 6px; height: 6px; background: #bbb; border-radius: 50%; }
+        .drag-lock-ui .dot:nth-child(2) { width: 5px; height: 5px; }
+        .drag-lock-ui .dot:nth-child(3) { width: 4px; height: 4px; }
+        .drag-lock-ui .dot:nth-child(4) { width: 3px; height: 3px; }
+
         .input-bar-wrapper {
             width: 100%;
             max-width: 720px; 
@@ -251,7 +274,7 @@
             display: none; 
         }
         
-        /* New Neutral Recording UI exactly like drawing */
+        /* Voice Note Recording UI */
         .recording-ui {
             display: none; flex: 1; align-items: center; gap: 12px; 
             padding: 0; height: 44px; color: #333;
@@ -268,12 +291,16 @@
         .wave-bar:nth-child(7) { animation-delay: 0.6s; }
         @keyframes pulseWave { 0%, 100% { height: 5px; } 50% { height: 16px; } }
 
-        .rec-action-btn { color: #555; font-size: 18px; cursor: pointer; padding: 5px; transition: 0.2s; }
+        .rec-action-btn { color: #555; font-size: 18px; cursor: pointer; padding: 5px; transition: 0.2s; display: none; }
         .rec-action-btn:hover { color: #111; }
 
         #mike-btn, .send-btn { width: 44px; height: 44px; border-radius: 50%; display: flex; justify-content: center; align-items: center; cursor: pointer; border: none; flex-shrink: 0; }
         #mike-btn { font-size: 20px; color: #555; background: transparent; transition: 0.2s; }
         .send-btn { background: #000; color: #fff; margin-left: 10px; font-size: 18px; }
+        
+        /* ORIGINAL RECORDING CLASS FOR TEXT-TO-SPEECH */
+        #mike-btn.recording { background-color: #000 !important; color: #fff !important; }
+        
         .stop-square { width: 12px; height: 12px; background: #fff; border-radius: 2px; }
 
         pre { 
@@ -487,6 +514,14 @@
         </main>
 
         <div class="bottom-container">
+            <div id="drag-lock-ui" class="drag-lock-ui">
+                <div class="lock-circle"><i class="fas fa-lock"></i></div>
+                <div class="dot"></div>
+                <div class="dot"></div>
+                <div class="dot"></div>
+                <div class="dot"></div>
+            </div>
+
             <div class="input-bar-wrapper">
                 
                 <div class="chat-input-container">
@@ -508,12 +543,12 @@
                         <textarea id="user-input" placeholder="Ask DATEX AI..." rows="1" oninput="autoGrow(this)"></textarea>
                         
                         <div id="recording-ui" class="recording-ui">
-                            <i class="fas fa-trash-alt rec-action-btn" onclick="cancelAudioRecord()"></i>
-                            <i id="rec-stop-btn" class="fas fa-stop-circle rec-action-btn" onclick="stopAudioMidway()"></i>
-                            <div class="wave-animation playing" id="rec-wave">
+                            <i class="fas fa-trash-alt rec-action-btn" id="rec-delete-btn" onclick="cancelAudioRecord()"></i>
+                            <div class="wave-animation" id="rec-wave">
                                 <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
                             </div>
                             <span id="recording-timer" style="font-size: 14px; min-width: 35px;">0:00</span>
+                            <i id="rec-stop-btn" class="fas fa-stop-circle rec-action-btn" onclick="stopAudioMidway()"></i>
                         </div>
 
                         <div class="actions-right" style="display:flex; align-items:center; height: 44px;">
@@ -551,6 +586,7 @@
     let selectedMsgRow = null;
     let activeChatIndex = -1;
     let editingMsgIdx = -1; 
+    let sessionFinalText = "";
     
     let isGenerating = false;
     let stopGenerationFlag = false;
@@ -663,38 +699,124 @@
         }
     }
 
-    // --- NEW AUDIO RECORDING LOGIC (MEDIA RECORDER) ---
-    let mediaRecorder;
-    let audioChunks = [];
-    let isRecordingAudio = false;
-    let recordingLocked = false;
+
+    // =========================================================
+    // 1. ORIGINAL DICTATION (TEXT-TO-SPEECH) LOGIC (UNTOUCHED)
+    // =========================================================
+    let isRecording = false; 
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    let recognition;
+    if (SpeechRecognition) {
+        recognition = new SpeechRecognition();
+        recognition.interimResults = false; 
+        recognition.continuous = true;
+        recognition.onstart = () => { 
+            isRecording = true; 
+            sessionFinalText = document.getElementById('user-input').value; 
+            if (sessionFinalText.length > 0 && !sessionFinalText.endsWith(" ")) { sessionFinalText += " "; } 
+            const btn = document.getElementById('mike-btn'); 
+            btn.classList.add('recording'); 
+            btn.innerHTML = '<i class="fas fa-microphone"></i>'; 
+        };
+        recognition.onend = () => { 
+            isRecording = false; 
+            const btn = document.getElementById('mike-btn'); 
+            btn.classList.remove('recording'); 
+            btn.innerHTML = '<i class="fas fa-microphone"></i>'; 
+        };
+        recognition.onresult = (e) => { 
+            let interimTranscript = ""; 
+            for (let i = e.resultIndex; i < e.results.length; ++i) { 
+                if (e.results[i].isFinal) { sessionFinalText += e.results[i][0].transcript; } 
+                else { interimTranscript += e.results[i][0].transcript; } 
+            } 
+            const input = document.getElementById('user-input'); 
+            input.value = sessionFinalText + interimTranscript; 
+            autoGrow(input); 
+        };
+    }
+
+    let ignoreNextClick = false; // Prevents drag from firing dictation
+    document.getElementById('mike-btn').onclick = () => {
+        if (ignoreNextClick) {
+            ignoreNextClick = false;
+            return;
+        }
+        if (!recognition) return;
+        if (isRecording) { recognition.stop(); } else { recognition.start(); }
+    };
+
+
+    // =========================================================
+    // 2. NEW VOICE NOTE RECORDING LOGIC (DRAG TO LOCK ONLY)
+    // =========================================================
+    let vnMediaRecorder;
+    let vnAudioChunks = [];
+    let isVoiceNoteActive = false; 
     let isSendingAudio = false; 
     let recTimerInterval;
     let recSeconds = 0;
-    let startY = 0;
+    
+    let vnStartY = 0;
+    let vnIsDragging = false;
 
     const micBtn = document.getElementById('mike-btn');
     const txtArea = document.getElementById('user-input');
     const recUi = document.getElementById('recording-ui');
     const recTimerDisplay = document.getElementById('recording-timer');
     const recStopBtn = document.getElementById('rec-stop-btn');
+    const recDelBtn = document.getElementById('rec-delete-btn');
     const recWave = document.getElementById('rec-wave');
+    const dragLockUi = document.getElementById('drag-lock-ui');
 
-    async function startAudioRecord() {
+    micBtn.addEventListener('touchstart', (e) => {
+        if(isVoiceNoteActive || isGenerating || currentAttachmentData?.type === 'audio') return;
+        vnStartY = e.touches[0].clientY;
+        vnIsDragging = true;
+    }, {passive: false});
+
+    micBtn.addEventListener('touchmove', (e) => {
+        if(!vnIsDragging || isVoiceNoteActive) return;
+        let currentY = e.touches[0].clientY;
+        let diff = vnStartY - currentY;
+        
+        if (diff > 10 && diff <= 40) {
+            dragLockUi.classList.add('active'); // Show bubbles
+        } else if (diff > 40) {
+            // Dragged up enough -> Lock and Start Voice Note
+            vnIsDragging = false;
+            ignoreNextClick = true; // Stop native click from firing Dictation
+            dragLockUi.classList.remove('active');
+            
+            if (isRecording && recognition) recognition.stop(); // Stop dictation if running
+            startVoiceNoteRecord();
+        } else {
+            dragLockUi.classList.remove('active');
+        }
+    }, {passive: false});
+
+    micBtn.addEventListener('touchend', (e) => {
+        vnIsDragging = false;
+        dragLockUi.classList.remove('active');
+        // If not dragged > 40px, the native browser 'click' will fire and trigger standard Dictation via onclick.
+    });
+
+
+    async function startVoiceNoteRecord() {
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            mediaRecorder = new MediaRecorder(stream);
-            audioChunks = [];
-            mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
+            vnMediaRecorder = new MediaRecorder(stream);
+            vnAudioChunks = [];
+            vnMediaRecorder.ondataavailable = e => { if (e.data.size > 0) vnAudioChunks.push(e.data); };
             
-            isRecordingAudio = true;
-            recordingLocked = false;
+            isVoiceNoteActive = true;
             isSendingAudio = false;
             
-            // UI changes
+            // UI changes for Voice Note
             txtArea.style.display = 'none';
             recUi.classList.add('active');
-            recStopBtn.style.display = 'block';
+            recStopBtn.style.display = 'block'; 
+            recDelBtn.style.display = 'block';
             recWave.classList.add('playing');
             
             recSeconds = 0;
@@ -706,90 +828,52 @@
                 recTimerDisplay.innerText = `${m}:${s < 10 ? '0' : ''}${s}`;
             }, 1000);
 
-            mediaRecorder.onstop = () => {
-                const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+            vnMediaRecorder.onstop = () => {
+                const audioBlob = new Blob(vnAudioChunks, { type: 'audio/webm' });
                 const audioUrl = URL.createObjectURL(audioBlob);
                 currentAttachmentData = { type: 'audio', name: 'Voice Note', data: audioBlob, url: audioUrl, duration: recTimerDisplay.innerText };
                 
                 if (isSendingAudio) {
                     callDatexAPI();
-                    resetAudioUI();
+                    resetVoiceNoteUI();
                 } else {
-                    // Stopped midway, waiting for user to send or delete
-                    isRecordingAudio = false; 
+                    // Stopped midway, wait for send or delete
+                    isVoiceNoteActive = false; 
                     clearInterval(recTimerInterval);
-                    recStopBtn.style.display = 'none';
                     recWave.classList.remove('playing');
+                    recStopBtn.style.display = 'none'; 
                 }
             };
             
-            mediaRecorder.start();
+            vnMediaRecorder.start();
 
         } catch (err) {
-            alert("Microphone permission denied! Please allow access.");
+            alert("Microphone permission denied!");
+            resetVoiceNoteUI();
         }
     }
 
     function stopAudioMidway() {
-        if(mediaRecorder && mediaRecorder.state !== 'inactive') {
-            mediaRecorder.stop();
+        if(vnMediaRecorder && vnMediaRecorder.state !== 'inactive') {
+            vnMediaRecorder.stop();
         }
     }
 
     function cancelAudioRecord() {
-        if(mediaRecorder && mediaRecorder.state !== 'inactive') { 
-            mediaRecorder.stop(); 
+        if(vnMediaRecorder && vnMediaRecorder.state !== 'inactive') { 
+            vnMediaRecorder.stop(); 
         }
         currentAttachmentData = null;
-        resetAudioUI();
+        resetVoiceNoteUI();
     }
 
-    function resetAudioUI() {
-        isRecordingAudio = false;
-        recordingLocked = false;
+    function resetVoiceNoteUI() {
+        isVoiceNoteActive = false;
         clearInterval(recTimerInterval);
         txtArea.style.display = 'block';
         recUi.classList.remove('active');
+        dragLockUi.classList.remove('active');
     }
-
-    // Touch events for Drag to Lock
-    micBtn.addEventListener('touchstart', (e) => {
-        if(isRecordingAudio || isGenerating || currentAttachmentData?.type === 'audio') return;
-        startY = e.touches[0].clientY;
-        startAudioRecord();
-    }, {passive: false});
-
-    micBtn.addEventListener('touchmove', (e) => {
-        if(!isRecordingAudio || recordingLocked) return;
-        let currentY = e.touches[0].clientY;
-        if(startY - currentY > 40) {
-            recordingLocked = true; // Dragged up to lock
-        }
-    }, {passive: false});
-
-    micBtn.addEventListener('touchend', (e) => {
-        if(!isRecordingAudio) return;
-        if(!recordingLocked) {
-            if(recSeconds < 1) {
-                cancelAudioRecord(); 
-            } else {
-                isSendingAudio = true;
-                mediaRecorder.stop(); 
-            }
-        }
-    });
-
-    // Mouse events fallback for PC
-    micBtn.addEventListener('mousedown', (e) => { 
-        if(!isRecordingAudio && !isGenerating && !(currentAttachmentData?.type === 'audio')) startAudioRecord(); 
-    });
-    micBtn.addEventListener('mouseup', (e) => { 
-        if(!isRecordingAudio) return;
-        if(!recordingLocked) {
-            if(recSeconds < 1) cancelAudioRecord();
-            else { isSendingAudio = true; mediaRecorder.stop(); }
-        }
-    });
 
     // ---------------------------------------------------
 
@@ -1068,13 +1152,16 @@
     function handleSendClick() { 
         if (isGenerating) { 
             stopGeneration(); 
-        } else if (isRecordingAudio) {
+        } else if (isVoiceNoteActive) {
+            // Send Audio that is locked
             isSendingAudio = true;
-            mediaRecorder.stop();
+            if(vnMediaRecorder && vnMediaRecorder.state !== 'inactive') vnMediaRecorder.stop();
         } else if (currentAttachmentData && currentAttachmentData.type === 'audio') {
+            // Already stopped midway, now send
             callDatexAPI();
-            resetAudioUI();
+            resetVoiceNoteUI();
         } else { 
+            // Send Text/Image
             callDatexAPI(); 
         } 
     }
