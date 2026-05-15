@@ -272,15 +272,17 @@
             display: none; 
         }
 
+        /* FIXED: Perfect layout for Voice Note Recording UI */
         .recording-ui {
-            display: none; flex: 1; align-items: center; gap: 10px; 
-            padding: 0; height: 44px; color: #333; margin-right: 10px;
+            display: none; flex: 1; align-items: center; gap: 0; 
+            padding: 0; height: 44px; color: #333; margin-right: 0;
         }
         .recording-ui.active { display: flex; }
         
         .recording-pill {
-            flex: 1; background: #e5e7eb; height: 40px; border-radius: 20px; 
+            flex: 1; background: #e5e7eb; height: 44px; border-radius: 22px; 
             display: flex; align-items: center; padding: 0 15px; justify-content: space-between; border: 1px solid #ddd;
+            margin-right: 12px; /* Perfect gap between pill and stop button */
         }
 
         .wave-animation { display: flex; gap: 3px; align-items: center; height: 20px; flex: 1; justify-content: center; margin: 0 10px; }
@@ -294,8 +296,9 @@
         .wave-bar:nth-child(7) { animation-delay: 0.6s; }
         @keyframes pulseWave { 0%, 100% { height: 5px; } 50% { height: 16px; } }
 
+        /* FIXED: Exact Size and Position of Stop Button */
         .rec-stop-btn {
-            width: 40px; height: 40px; border-radius: 50%; background: #000; 
+            width: 44px; height: 44px; border-radius: 50%; background: #000; 
             display: flex; justify-content: center; align-items: center; cursor: pointer; flex-shrink: 0;
         }
         
@@ -307,8 +310,6 @@
         
         #mike-btn.recording { background-color: #000 !important; color: #fff !important; }
         
-        .stop-square { width: 12px; height: 12px; background: #fff; border-radius: 2px; }
-
         pre { 
             background: #1e1e1e; 
             color: #d4d4d4; 
@@ -335,7 +336,7 @@
         .new-chat-btn { width: 100%; padding: 14px; background: #000; color: #fff; border: none; border-radius: 12px; cursor: pointer; font-weight: 600; }
 
         .ai-link {
-            color: #333 !important;
+            color: #1a73e8 !important;
             text-decoration: underline !important;
             word-break: break-word !important;
             cursor: pointer !important;
@@ -343,7 +344,7 @@
             font-weight: 600 !important;
         }
         .ai-link:hover {
-            color: #000 !important;
+            color: #1557b0 !important;
         }
 
         .action-bar { display: flex; gap: 15px; margin-top: 5px; padding: 0 10px; }
@@ -556,7 +557,7 @@
                                 <span id="recording-timer" style="font-size: 14px; font-weight: 600; color: #333; min-width: 35px; text-align: right;">0:00</span>
                             </div>
                             <div id="rec-stop-btn" class="rec-stop-btn" onclick="stopVoiceNoteMidway()">
-                                <i class="fas fa-stop" style="color: #fff; font-size: 14px;"></i>
+                                <i class="fas fa-stop" style="color: #fff; font-size: 16px;"></i>
                             </div>
                         </div>
 
@@ -690,6 +691,7 @@
         }
     }
 
+    // --- FIX: Dynamic Audio Player with Smooth Dot and Timer Updates ---
     let globalAudioPlayer = null;
     let currentPlayingBtn = null;
 
@@ -700,6 +702,8 @@
             if (currentPlayingBtn) {
                 let oldDot = currentPlayingBtn.nextElementSibling.querySelector('div');
                 if (oldDot) oldDot.style.left = '0%';
+                let oldTimer = currentPlayingBtn.parentElement.querySelector('.audio-timer');
+                if (oldTimer) oldTimer.innerText = oldTimer.getAttribute('data-duration');
             }
         }
         if(!globalAudioPlayer || globalAudioPlayer.src !== url) {
@@ -710,13 +714,23 @@
                 btn.querySelector('i').className = 'fas fa-play play-btn-icon'; 
                 let dot = btn.nextElementSibling.querySelector('div');
                 if(dot) dot.style.left = '0%';
+                let timerSpan = btn.parentElement.querySelector('.audio-timer');
+                if(timerSpan) timerSpan.innerText = timerSpan.getAttribute('data-duration');
             };
             
             globalAudioPlayer.ontimeupdate = () => {
                 let dot = btn.nextElementSibling.querySelector('div');
+                let timerSpan = btn.parentElement.querySelector('.audio-timer');
                 if(dot && globalAudioPlayer.duration) {
                     let percent = (globalAudioPlayer.currentTime / globalAudioPlayer.duration) * 100;
+                    if(percent > 100) percent = 100;
                     dot.style.left = `calc(${percent}% - 4px)`;
+                }
+                if(timerSpan && globalAudioPlayer.currentTime) {
+                    let currentSec = Math.floor(globalAudioPlayer.currentTime);
+                    let m = Math.floor(currentSec / 60);
+                    let s = currentSec % 60;
+                    timerSpan.innerText = `${m}:${s < 10 ? '0' : ''}${s}`;
                 }
             };
         }
@@ -1003,9 +1017,9 @@
                         <i class="fas fa-play play-btn-icon" style="color: #fff; margin-left: 2px; font-size: 13px;"></i>
                     </div>
                     <div style="flex: 1; height: 2px; background: #bbb; position: relative;">
-                        <div style="position: absolute; left: 0; top: -3px; width: 8px; height: 8px; border-radius: 50%; background: #333; transition: left 0.1s linear;"></div>
+                        <div style="position: absolute; left: 0; top: -3px; width: 8px; height: 8px; border-radius: 50%; background: #333; transition: left 0.2s linear;"></div>
                     </div>
-                    <span style="font-size: 12px; color: #333; font-weight: 500; min-width: 25px;">${dur}</span>
+                    <span class="audio-timer" data-duration="${dur}" style="font-size: 12px; color: #333; font-weight: 500; min-width: 30px; text-align: right;">${dur}</span>
                 </div>`;
             }
         }
@@ -1331,7 +1345,7 @@ CRITICAL INSTRUCTIONS:
 5. LIVE INTERNET & FAKE LINKS: You HAVE real-time live internet access. DO NOT INVENT, GUESS, OR HALLUCINATE LINKS. If you do not have the exact URL provided in the [System Note (Real-Time Internet Data)], you MUST state that you don't have the link. Only format provided URLs like [Website Name](https://...).
 6. IDENTITY: ONLY IF directly asked "who created you" or "who is your owner", state you were created and are owned by a 16 years old youngster, from India odisha, his N.Sujal Kumar.
 7. CODING RULE: Only provide programming code if explicitly asked.
-8. STRICT SAFETY & NSFW POLICY: This is a family-friendly AI app used by children. ABSOLUTELY NO explicit, adult, sexual, NSFW, or inappropriate content is permitted.
+8. STRICT SAFETY & NSFW POLICY: This is a family-friendly AI app used by children. ABSOLUTELY NO explicit, adult, NSFW, or inappropriate content is permitted.
 9. VISION OVERRIDE: You are a powerful Multimodal AI. You HAVE full vision capabilities. When an image is provided in the message, YOU CAN SEE IT. You must analyze the image and answer the user's question based on its visual contents. NEVER say you cannot see the image or that you are a text-based AI. If a document is attached instead, acknowledge its name politely.`;
 
         let mathContext = ""; let hasValidMath = false;
