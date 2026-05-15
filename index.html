@@ -743,20 +743,20 @@
     }
 
 
-    // =========================================================
-    // FIXED TEXT-TO-SPEECH LOGIC (LIVE OFF - AFTER SPEECH ONLY)
-    // =========================================================
     let isDictating = false; 
+    let sessionFinalText = ""; 
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     let recognition;
     
     if (SpeechRecognition) {
         recognition = new SpeechRecognition();
-        recognition.interimResults = false; // FIXED: LIVE TYPING OFF
+        recognition.interimResults = false; 
         recognition.continuous = true;
         
         recognition.onstart = () => { 
             isDictating = true; 
+            sessionFinalText = document.getElementById('user-input').value; 
+            if (sessionFinalText.length > 0 && !sessionFinalText.endsWith(" ")) { sessionFinalText += " "; } 
             const btn = document.getElementById('mike-btn'); 
             btn.classList.add('recording'); 
         };
@@ -776,7 +776,6 @@
             }
             if (finalTranscript) {
                 const input = document.getElementById('user-input'); 
-                // Add space if input is not empty
                 if (input.value.length > 0 && !input.value.endsWith(" ")) {
                     input.value += " ";
                 }
@@ -809,6 +808,7 @@
     let vnAudioChunks = [];
     let isVoiceNoteActive = false; 
     let isSendingAudio = false; 
+    let isDiscardingAudio = false; 
     let recTimerInterval;
     let recSeconds = 0;
     
@@ -876,6 +876,7 @@
             
             isVoiceNoteActive = true;
             isSendingAudio = false;
+            isDiscardingAudio = false; 
             
             txtArea.style.display = 'none';
             micBtnContainer.style.display = 'none';
@@ -893,6 +894,11 @@
             }, 1000);
 
             vnMediaRecorder.onstop = () => {
+                if (isDiscardingAudio) {
+                    isDiscardingAudio = false;
+                    return; 
+                }
+
                 const audioBlob = new Blob(vnAudioChunks, { type: 'audio/webm' });
                 const audioUrl = URL.createObjectURL(audioBlob);
                 currentAttachmentData = { type: 'audio', name: 'Voice Note', data: audioBlob, url: audioUrl, duration: recTimerDisplay.innerText };
@@ -923,6 +929,7 @@
     }
 
     function cancelVoiceNoteRecord() {
+        isDiscardingAudio = true; 
         if(vnMediaRecorder && vnMediaRecorder.state !== 'inactive') { 
             vnMediaRecorder.stop(); 
         }
@@ -1297,7 +1304,7 @@
         }
 
         isGenerating = true; stopGenerationFlag = false;
-        const sendBtn = document.querySelector('.send-btn'); sendBtn.innerHTML = '<i class="fas fa-stop" style="font-size: 14px;"></i>';
+        const sendBtn = document.querySelector('.send-btn'); sendBtn.innerHTML = '<div class="stop-square"></div>';
 
         const container = document.getElementById('chat-container');
         const aiRow = document.createElement('div'); aiRow.className = 'message-row ai-row';
@@ -1348,7 +1355,7 @@ CRITICAL INSTRUCTIONS:
 5. LIVE INTERNET & FAKE LINKS: You HAVE real-time live internet access. DO NOT INVENT, GUESS, OR HALLUCINATE LINKS. If you do not have the exact URL provided in the [System Note (Real-Time Internet Data)], you MUST state that you don't have the link. Only format provided URLs like [Website Name](https://...).
 6. IDENTITY: ONLY IF directly asked "who created you" or "who is your owner", state you were created and are owned by a 16 years old youngster, from India odisha, his N.Sujal Kumar.
 7. CODING RULE: Only provide programming code if explicitly asked.
-8. STRICT SAFETY & NSFW POLICY: This is a family-friendly AI app used by children. ABSOLUTELY NO explicit, adult, NSFW, or inappropriate content is permitted.
+8. STRICT SAFETY & NSFW POLICY: This is a family-friendly AI app used by children. ABSOLUTELY NO explicit, adult, sexual, NSFW, or inappropriate content is permitted.
 9. VISION OVERRIDE: You are a powerful Multimodal AI. You HAVE full vision capabilities. When an image is provided in the message, YOU CAN SEE IT. You must analyze the image and answer the user's question based on its visual contents. NEVER say you cannot see the image or that you are a text-based AI. If a document is attached instead, acknowledge its name politely.
 10. LANGUAGE LOCK: Always respond naturally in English, Hindi, or Hinglish based on what the user says. NEVER use Urdu script or other unexpected languages unless explicitly requested.`;
 
@@ -1387,7 +1394,7 @@ CRITICAL INSTRUCTIONS:
                     apiMessages.push({ role: 'user', content: textContent });
                 }
             } else {
-                apiMessages.push({ role: assistant, content: msg.content });
+                apiMessages.push({ role: 'assistant', content: msg.content });
             }
         });
 
@@ -1399,57 +1406,4 @@ CRITICAL INSTRUCTIONS:
         if (needsSearch && !useVision) {
             bubble.innerText = "Searching the web...";
             try {
-                const tavilyRes = await fetch("https://api.tavily.com/search", { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ "api_key": TAVILY_API_KEY, "query": message, "search_depth": "basic", "max_results": 3 }) });
-                const tavilyData = await tavilyRes.json();
-                if (tavilyData && tavilyData.results && tavilyData.results.length > 0) {
-                    let searchResults = tavilyData.results.map(r => r.title + " (URL: " + r.url + ")\n" + r.content).join('\n\n');
-                    let internetContext = `System Note (Real-Time Internet Data): Here are the latest internet search results for the user's query. Use this to give an accurate, up-to-date answer. ALWAYS include the 'URL' provided below in your response starting with https:// so it is clickable:\n${searchResults}\n`;
-                    apiMessages.push({ "role": "system", "content": internetContext });
-                }
-            } catch(e) {}
-            bubble.innerText = "Thinking...";
-        }
-
-        abortController = new AbortController();
-
-        try {
-            const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-                method: 'POST', headers: { 'Authorization': `Bearer ${GROQ_API_KEY}`, 'Content-Type': 'application/json' }, signal: abortController.signal,
-                body: JSON.stringify({ 
-                    "messages": apiMessages, 
-                    "model": selectedModel,
-                    "max_tokens": 4096 
-                }) 
-            });
-            
-            if (!res.ok) {
-                const errData = await res.json();
-                throw new Error(errData.error?.message || `Server Error ${res.status}`);
-            }
-            
-            const data = await res.json();
-            
-            if (data.error || !data.choices || data.choices.length === 0) { 
-                throw new Error("API Limit Reached or Internal Error"); 
-            }
-            
-            const aiResponse = data.choices[0].message.content; const aiMsgIdx = chatHistory[activeChatIndex].messages.length;
-            chatHistory[activeChatIndex].messages.push({ role: "assistant", content: aiResponse }); aiRow.setAttribute('data-index', aiMsgIdx);
-            localStorage.setItem('datex_full_history', JSON.stringify(chatHistory)); bubble.innerHTML = ""; typeEffect(bubble, aiResponse, 5);
-            
-        } catch (e) { 
-            if (e.name === 'AbortError') { 
-                bubble.innerText = "Generation stopped."; 
-            } else { 
-                bubble.innerText = "Server Error: " + e.message; 
-            }
-            resetSendButton(); addAiActions(currentAiRow, true);
-        }
-    }
-
-    document.getElementById('user-input').addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' && !e.shiftKey) { if (window.innerWidth <= 768 || ('ontouchstart' in window)) { return; } e.preventDefault(); handleSendClick(); }
-    });
-    </script>
-</body>
-</html>
+                const tavilyRes = await fetch("https://api.tavily.com
