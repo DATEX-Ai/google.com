@@ -307,7 +307,7 @@
         .send-btn { width: 44px; height: 44px; border-radius: 50%; display: flex; justify-content: center; align-items: center; cursor: pointer; border: none; flex-shrink: 0; background: #000; color: #fff; margin-left: 12px; font-size: 18px; }
         
         #mike-btn.recording { background-color: #000 !important; color: #fff !important; }
-
+        
         pre { 
             background: #1e1e1e; 
             color: #d4d4d4; 
@@ -743,20 +743,20 @@
     }
 
 
+    // =========================================================
+    // FIXED TEXT-TO-SPEECH LOGIC (LIVE OFF - AFTER SPEECH ONLY)
+    // =========================================================
     let isDictating = false; 
-    let sessionFinalText = ""; 
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     let recognition;
     
     if (SpeechRecognition) {
         recognition = new SpeechRecognition();
-        recognition.interimResults = true; 
+        recognition.interimResults = false; // FIXED: LIVE TYPING OFF
         recognition.continuous = true;
         
         recognition.onstart = () => { 
             isDictating = true; 
-            sessionFinalText = document.getElementById('user-input').value; 
-            if (sessionFinalText.length > 0 && !sessionFinalText.endsWith(" ")) { sessionFinalText += " "; } 
             const btn = document.getElementById('mike-btn'); 
             btn.classList.add('recording'); 
         };
@@ -768,20 +768,21 @@
         };
         
         recognition.onresult = (e) => { 
-            let interimTranscript = ""; 
-            let currentFinal = "";
+            let finalTranscript = ""; 
             for (let i = e.resultIndex; i < e.results.length; ++i) { 
                 if (e.results[i].isFinal) { 
-                    currentFinal += e.results[i][0].transcript; 
-                } else {
-                    interimTranscript += e.results[i][0].transcript;
-                }
+                    finalTranscript += e.results[i][0].transcript; 
+                } 
             }
-            sessionFinalText += currentFinal;
-            
-            const input = document.getElementById('user-input'); 
-            input.value = sessionFinalText + interimTranscript; 
-            autoGrow(input); 
+            if (finalTranscript) {
+                const input = document.getElementById('user-input'); 
+                // Add space if input is not empty
+                if (input.value.length > 0 && !input.value.endsWith(" ")) {
+                    input.value += " ";
+                }
+                input.value += finalTranscript; 
+                autoGrow(input); 
+            }
         };
         
         recognition.onerror = (e) => {
@@ -1386,7 +1387,7 @@ CRITICAL INSTRUCTIONS:
                     apiMessages.push({ role: 'user', content: textContent });
                 }
             } else {
-                apiMessages.push({ role: 'assistant', content: msg.content });
+                apiMessages.push({ role: assistant, content: msg.content });
             }
         });
 
