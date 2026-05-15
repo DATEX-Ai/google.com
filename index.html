@@ -272,7 +272,6 @@
             display: none; 
         }
 
-        /* FIXED: Perfect layout for Voice Note Recording UI */
         .recording-ui {
             display: none; flex: 1; align-items: center; gap: 0; 
             padding: 0; height: 44px; color: #333; margin-right: 0;
@@ -282,7 +281,7 @@
         .recording-pill {
             flex: 1; background: #e5e7eb; height: 44px; border-radius: 22px; 
             display: flex; align-items: center; padding: 0 15px; justify-content: space-between; border: 1px solid #ddd;
-            margin-right: 12px; /* Perfect gap between pill and stop button */
+            margin-right: 12px; 
         }
 
         .wave-animation { display: flex; gap: 3px; align-items: center; height: 20px; flex: 1; justify-content: center; margin: 0 10px; }
@@ -296,7 +295,6 @@
         .wave-bar:nth-child(7) { animation-delay: 0.6s; }
         @keyframes pulseWave { 0%, 100% { height: 5px; } 50% { height: 16px; } }
 
-        /* FIXED: Exact Size and Position of Stop Button */
         .rec-stop-btn {
             width: 44px; height: 44px; border-radius: 50%; background: #000; 
             display: flex; justify-content: center; align-items: center; cursor: pointer; flex-shrink: 0;
@@ -691,7 +689,6 @@
         }
     }
 
-    // --- FIX: Dynamic Audio Player with Smooth Dot and Timer Updates ---
     let globalAudioPlayer = null;
     let currentPlayingBtn = null;
 
@@ -746,17 +743,23 @@
     }
 
 
+    // =========================================================
+    // 1. FIXED TEXT-TO-SPEECH LOGIC (LIVE TYPING RESTORED)
+    // =========================================================
     let isDictating = false; 
+    let sessionFinalText = ""; // Holds finalized text during session
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     let recognition;
     
     if (SpeechRecognition) {
         recognition = new SpeechRecognition();
-        recognition.interimResults = false; 
+        recognition.interimResults = true; // FIX: Turned back ON so text appears as you speak
         recognition.continuous = true;
         
         recognition.onstart = () => { 
             isDictating = true; 
+            sessionFinalText = document.getElementById('user-input').value; 
+            if (sessionFinalText.length > 0 && !sessionFinalText.endsWith(" ")) { sessionFinalText += " "; } 
             const btn = document.getElementById('mike-btn'); 
             btn.classList.add('recording'); 
         };
@@ -768,20 +771,20 @@
         };
         
         recognition.onresult = (e) => { 
-            let finalTranscript = ""; 
+            let interimTranscript = ""; 
+            let currentFinal = "";
             for (let i = e.resultIndex; i < e.results.length; ++i) { 
                 if (e.results[i].isFinal) { 
-                    finalTranscript += e.results[i][0].transcript; 
-                } 
-            }
-            if (finalTranscript) {
-                const input = document.getElementById('user-input'); 
-                if (input.value.length > 0 && !input.value.endsWith(" ")) {
-                    input.value += " ";
+                    currentFinal += e.results[i][0].transcript; 
+                } else {
+                    interimTranscript += e.results[i][0].transcript;
                 }
-                input.value += finalTranscript; 
-                autoGrow(input); 
             }
+            sessionFinalText += currentFinal;
+            
+            const input = document.getElementById('user-input'); 
+            input.value = sessionFinalText + interimTranscript; 
+            autoGrow(input); 
         };
         
         recognition.onerror = (e) => {
@@ -1017,7 +1020,7 @@
                         <i class="fas fa-play play-btn-icon" style="color: #fff; margin-left: 2px; font-size: 13px;"></i>
                     </div>
                     <div style="flex: 1; height: 2px; background: #bbb; position: relative;">
-                        <div style="position: absolute; left: 0; top: -3px; width: 8px; height: 8px; border-radius: 50%; background: #333; transition: left 0.2s linear;"></div>
+                        <div style="position: absolute; left: 0; top: -3px; width: 8px; height: 8px; border-radius: 50%; background: #333; transition: left 0.1s linear;"></div>
                     </div>
                     <span class="audio-timer" data-duration="${dur}" style="font-size: 12px; color: #333; font-weight: 500; min-width: 30px; text-align: right;">${dur}</span>
                 </div>`;
@@ -1306,9 +1309,12 @@
         if (attachmentToSave && attachmentToSave.type === 'audio' && !isRegenerate) {
             bubble.innerText = "Transcribing voice note...";
             try {
+                // FIX: Added explicit prompts and constraints to prevent Urdu hallucination
                 const fd = new FormData();
                 fd.append('file', attachmentToSave.data, 'voicenote.webm');
                 fd.append('model', 'whisper-large-v3');
+                fd.append('temperature', '0.0'); // Reduces hallucinations
+                fd.append('prompt', 'Transcribe exactly what is spoken. Do not translate. Ensure correct language detection.'); 
                 
                 const wRes = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
                     method: 'POST',
@@ -1325,7 +1331,7 @@
                     throw new Error("Empty audio");
                 }
             } catch(err) {
-                bubble.innerText = "Error: Could not transcribe voice note. Please check your API key.";
+                bubble.innerText = "Error: Could not transcribe voice note. Please check your API key or connection.";
                 resetSendButton(); addAiActions(currentAiRow, true); return;
             }
             bubble.innerText = "Thinking...";
@@ -1346,7 +1352,8 @@ CRITICAL INSTRUCTIONS:
 6. IDENTITY: ONLY IF directly asked "who created you" or "who is your owner", state you were created and are owned by a 16 years old youngster, from India odisha, his N.Sujal Kumar.
 7. CODING RULE: Only provide programming code if explicitly asked.
 8. STRICT SAFETY & NSFW POLICY: This is a family-friendly AI app used by children. ABSOLUTELY NO explicit, adult, NSFW, or inappropriate content is permitted.
-9. VISION OVERRIDE: You are a powerful Multimodal AI. You HAVE full vision capabilities. When an image is provided in the message, YOU CAN SEE IT. You must analyze the image and answer the user's question based on its visual contents. NEVER say you cannot see the image or that you are a text-based AI. If a document is attached instead, acknowledge its name politely.`;
+9. VISION OVERRIDE: You are a powerful Multimodal AI. You HAVE full vision capabilities. When an image is provided in the message, YOU CAN SEE IT. You must analyze the image and answer the user's question based on its visual contents. NEVER say you cannot see the image or that you are a text-based AI. If a document is attached instead, acknowledge its name politely.
+10. LANGUAGE LOCK: Always respond naturally in English, Hindi, or Hinglish based on what the user says. NEVER use Urdu script or other unexpected languages unless explicitly requested.`; // FIX: Explicit Urdu constraint added
 
         let mathContext = ""; let hasValidMath = false;
         try {
