@@ -307,7 +307,7 @@
         .send-btn { width: 44px; height: 44px; border-radius: 50%; display: flex; justify-content: center; align-items: center; cursor: pointer; border: none; flex-shrink: 0; background: #000; color: #fff; margin-left: 12px; font-size: 18px; }
         
         #mike-btn.recording { background-color: #000 !important; color: #fff !important; }
-        
+
         pre { 
             background: #1e1e1e; 
             color: #d4d4d4; 
@@ -555,7 +555,7 @@
                                 <span id="recording-timer" style="font-size: 14px; font-weight: 600; color: #333; min-width: 35px; text-align: right;">0:00</span>
                             </div>
                             <div id="rec-stop-btn" class="rec-stop-btn" onclick="stopVoiceNoteMidway()">
-                                <i class="fas fa-stop" style="color: #fff; font-size: 16px;"></i>
+                                <i class="fas fa-stop" style="color: #fff; font-size: 14px;"></i>
                             </div>
                         </div>
 
@@ -743,17 +743,14 @@
     }
 
 
-    // =========================================================
-    // 1. FIXED TEXT-TO-SPEECH LOGIC (LIVE TYPING RESTORED)
-    // =========================================================
     let isDictating = false; 
-    let sessionFinalText = ""; // Holds finalized text during session
+    let sessionFinalText = ""; 
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     let recognition;
     
     if (SpeechRecognition) {
         recognition = new SpeechRecognition();
-        recognition.interimResults = true; // FIX: Turned back ON so text appears as you speak
+        recognition.interimResults = true; 
         recognition.continuous = true;
         
         recognition.onstart = () => { 
@@ -1299,7 +1296,7 @@
         }
 
         isGenerating = true; stopGenerationFlag = false;
-        const sendBtn = document.querySelector('.send-btn'); sendBtn.innerHTML = '<div class="stop-square"></div>';
+        const sendBtn = document.querySelector('.send-btn'); sendBtn.innerHTML = '<i class="fas fa-stop" style="font-size: 14px;"></i>';
 
         const container = document.getElementById('chat-container');
         const aiRow = document.createElement('div'); aiRow.className = 'message-row ai-row';
@@ -1309,11 +1306,10 @@
         if (attachmentToSave && attachmentToSave.type === 'audio' && !isRegenerate) {
             bubble.innerText = "Transcribing voice note...";
             try {
-                // FIX: Added explicit prompts and constraints to prevent Urdu hallucination
                 const fd = new FormData();
                 fd.append('file', attachmentToSave.data, 'voicenote.webm');
                 fd.append('model', 'whisper-large-v3');
-                fd.append('temperature', '0.0'); // Reduces hallucinations
+                fd.append('temperature', '0.0'); 
                 fd.append('prompt', 'Transcribe exactly what is spoken. Do not translate. Ensure correct language detection.'); 
                 
                 const wRes = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
@@ -1353,7 +1349,7 @@ CRITICAL INSTRUCTIONS:
 7. CODING RULE: Only provide programming code if explicitly asked.
 8. STRICT SAFETY & NSFW POLICY: This is a family-friendly AI app used by children. ABSOLUTELY NO explicit, adult, NSFW, or inappropriate content is permitted.
 9. VISION OVERRIDE: You are a powerful Multimodal AI. You HAVE full vision capabilities. When an image is provided in the message, YOU CAN SEE IT. You must analyze the image and answer the user's question based on its visual contents. NEVER say you cannot see the image or that you are a text-based AI. If a document is attached instead, acknowledge its name politely.
-10. LANGUAGE LOCK: Always respond naturally in English, Hindi, or Hinglish based on what the user says. NEVER use Urdu script or other unexpected languages unless explicitly requested.`; // FIX: Explicit Urdu constraint added
+10. LANGUAGE LOCK: Always respond naturally in English, Hindi, or Hinglish based on what the user says. NEVER use Urdu script or other unexpected languages unless explicitly requested.`;
 
         let mathContext = ""; let hasValidMath = false;
         try {
