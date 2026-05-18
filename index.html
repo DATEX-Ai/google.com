@@ -37,6 +37,33 @@
             user-select: none !important; 
         }
 
+        /* --- SPLASH SCREEN (INTRO) CSS --- */
+        #splash-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #ffffff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            transition: opacity 0.3s ease-out, visibility 0.3s ease-out;
+        }
+        #splash-screen img {
+            width: 75px; 
+            height: 75px; 
+            border-radius: 50%;
+            object-fit: cover;
+            animation: splashPop 0.5s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+        }
+        @keyframes splashPop {
+            0% { transform: scale(0.8); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        /* ---------------------------------- */
+
         textarea, input {
             -webkit-user-select: auto !important;
             -moz-user-select: auto !important;
@@ -308,6 +335,8 @@
         
         #mike-btn.recording { background-color: #000 !important; color: #fff !important; }
         
+        .stop-square { width: 12px; height: 12px; background: #fff; border-radius: 2px; }
+
         pre { 
             background: #1e1e1e; 
             color: #d4d4d4; 
@@ -451,6 +480,10 @@
 </head>
 <body onclick="hideMsgMenu()">
 
+    <div id="splash-screen">
+        <img src="logo.jpg.jpg" alt="DATEX AI">
+    </div>
+
     <div class="overlay" id="overlay" onclick="toggleSidebar()"></div>
     <div class="attachment-overlay" id="attachment-overlay" onclick="toggleAttachmentMenu()"></div>
 
@@ -555,7 +588,7 @@
                                 <span id="recording-timer" style="font-size: 14px; font-weight: 600; color: #333; min-width: 35px; text-align: right;">0:00</span>
                             </div>
                             <div id="rec-stop-btn" class="rec-stop-btn" onclick="stopVoiceNoteMidway()">
-                                <i class="fas fa-stop" style="color: #fff; font-size: 14px;"></i>
+                                <i class="fas fa-stop" style="color: #fff; font-size: 16px;"></i>
                             </div>
                         </div>
 
@@ -574,6 +607,25 @@
     </div>
 
     <script>
+    // --- SPLASH SCREEN LOGIC ---
+    document.addEventListener("DOMContentLoaded", () => {
+        const splash = document.getElementById('splash-screen');
+        if (!sessionStorage.getItem('datex_splash_shown')) {
+            // First time opening the app in this session
+            sessionStorage.setItem('datex_splash_shown', 'true');
+            setTimeout(() => {
+                splash.style.opacity = '0';
+                splash.style.visibility = 'hidden';
+                setTimeout(() => splash.remove(), 300); // Remove from DOM after fade out
+            }, 1200); // 1.2 seconds Intro Duration
+        } else {
+            // Already shown, hide immediately (e.g., on page refresh)
+            splash.style.display = 'none';
+            splash.remove();
+        }
+    });
+    // ---------------------------
+
     document.addEventListener('contextmenu', function(e) {
         if (e.target.tagName !== 'TEXTAREA' && e.target.tagName !== 'INPUT') {
             e.preventDefault();
@@ -743,20 +795,20 @@
     }
 
 
-    // =========================================================
-    // FIXED TEXT-TO-SPEECH LOGIC (LIVE OFF - AFTER SPEECH ONLY)
-    // =========================================================
     let isDictating = false; 
+    let sessionFinalText = ""; 
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     let recognition;
     
     if (SpeechRecognition) {
         recognition = new SpeechRecognition();
-        recognition.interimResults = false; // FIXED: LIVE TYPING OFF
+        recognition.interimResults = false; 
         recognition.continuous = true;
         
         recognition.onstart = () => { 
             isDictating = true; 
+            sessionFinalText = document.getElementById('user-input').value; 
+            if (sessionFinalText.length > 0 && !sessionFinalText.endsWith(" ")) { sessionFinalText += " "; } 
             const btn = document.getElementById('mike-btn'); 
             btn.classList.add('recording'); 
         };
@@ -776,7 +828,6 @@
             }
             if (finalTranscript) {
                 const input = document.getElementById('user-input'); 
-                // Add space if input is not empty
                 if (input.value.length > 0 && !input.value.endsWith(" ")) {
                     input.value += " ";
                 }
@@ -1387,7 +1438,7 @@ CRITICAL INSTRUCTIONS:
                     apiMessages.push({ role: 'user', content: textContent });
                 }
             } else {
-                apiMessages.push({ role: assistant, content: msg.content });
+                apiMessages.push({ role: 'assistant', content: msg.content });
             }
         });
 
