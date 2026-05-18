@@ -52,8 +52,8 @@
             transition: opacity 0.3s ease-out, visibility 0.3s ease-out;
         }
         #splash-screen img {
-            width: 75px; 
-            height: 75px; 
+            width: 120px; /* Bada kar diya */
+            height: 120px; /* Bada kar diya */
             border-radius: 50%;
             object-fit: cover;
             animation: splashPop 0.5s cubic-bezier(0.25, 1, 0.5, 1) forwards;
@@ -334,8 +334,6 @@
         .send-btn { width: 44px; height: 44px; border-radius: 50%; display: flex; justify-content: center; align-items: center; cursor: pointer; border: none; flex-shrink: 0; background: #000; color: #fff; margin-left: 12px; font-size: 18px; }
         
         #mike-btn.recording { background-color: #000 !important; color: #fff !important; }
-        
-        .stop-square { width: 12px; height: 12px; background: #fff; border-radius: 2px; }
 
         pre { 
             background: #1e1e1e; 
@@ -588,7 +586,7 @@
                                 <span id="recording-timer" style="font-size: 14px; font-weight: 600; color: #333; min-width: 35px; text-align: right;">0:00</span>
                             </div>
                             <div id="rec-stop-btn" class="rec-stop-btn" onclick="stopVoiceNoteMidway()">
-                                <i class="fas fa-stop" style="color: #fff; font-size: 16px;"></i>
+                                <i class="fas fa-stop" style="color: #fff; font-size: 14px;"></i>
                             </div>
                         </div>
 
@@ -607,22 +605,14 @@
     </div>
 
     <script>
-    // --- SPLASH SCREEN LOGIC ---
+    // --- SPLASH SCREEN LOGIC (Runs every refresh) ---
     document.addEventListener("DOMContentLoaded", () => {
         const splash = document.getElementById('splash-screen');
-        if (!sessionStorage.getItem('datex_splash_shown')) {
-            // First time opening the app in this session
-            sessionStorage.setItem('datex_splash_shown', 'true');
-            setTimeout(() => {
-                splash.style.opacity = '0';
-                splash.style.visibility = 'hidden';
-                setTimeout(() => splash.remove(), 300); // Remove from DOM after fade out
-            }, 1200); // 1.2 seconds Intro Duration
-        } else {
-            // Already shown, hide immediately (e.g., on page refresh)
-            splash.style.display = 'none';
-            splash.remove();
-        }
+        setTimeout(() => {
+            splash.style.opacity = '0';
+            splash.style.visibility = 'hidden';
+            setTimeout(() => splash.remove(), 300); // Remove from DOM after fade out
+        }, 1200); // 1.2 seconds Intro Duration
     });
     // ---------------------------
 
