@@ -80,8 +80,6 @@
         .chat-list { list-style: none; }
         .chat-item-wrapper { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; background: #fff; border: 1px solid #eee; border-radius: 8px; padding-right: 10px; }
         .chat-item { flex: 1; padding: 12px; cursor: pointer; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border: none; background: transparent; text-align: left; }
-        
-        /* FIX: Trash buttons default color changed to Red */
         .delete-chat-btn { color: #ff4d4d; cursor: pointer; font-size: 14px; transition: 0.2s; padding: 5px; }
         .delete-chat-btn:hover { color: #ff1a1a; }
 
@@ -607,7 +605,6 @@
     </div>
 
     <script>
-    // --- SPLASH SCREEN LOGIC ---
     document.addEventListener("DOMContentLoaded", () => {
         const splash = document.getElementById('splash-screen');
         setTimeout(() => {
@@ -616,7 +613,6 @@
             setTimeout(() => splash.remove(), 300); 
         }, 1200); 
     });
-    // ---------------------------
 
     document.addEventListener('gesturestart', function (e) {
         e.preventDefault();
@@ -798,21 +794,18 @@
         }
     }
 
-
+    // --- FIX: TEXT-TO-SPEECH (NON-LIVE) ---
     let isDictating = false; 
-    let sessionFinalText = ""; 
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     let recognition;
     
     if (SpeechRecognition) {
         recognition = new SpeechRecognition();
-        recognition.interimResults = false; 
-        recognition.continuous = true;
+        recognition.interimResults = false; // LIVE TYPING OFF
+        recognition.continuous = false; // Auto-stop after breath/pause
         
         recognition.onstart = () => { 
             isDictating = true; 
-            sessionFinalText = document.getElementById('user-input').value; 
-            if (sessionFinalText.length > 0 && !sessionFinalText.endsWith(" ")) { sessionFinalText += " "; } 
             const btn = document.getElementById('mike-btn'); 
             btn.classList.add('recording'); 
         };
@@ -864,6 +857,7 @@
     let vnAudioChunks = [];
     let isVoiceNoteActive = false; 
     let isSendingAudio = false; 
+    let isCancelingAudio = false; // FIX: Lock for delete action
     let recTimerInterval;
     let recSeconds = 0;
     
@@ -931,6 +925,7 @@
             
             isVoiceNoteActive = true;
             isSendingAudio = false;
+            isCancelingAudio = false; // Reset lock
             
             txtArea.style.display = 'none';
             micBtnContainer.style.display = 'none';
@@ -947,7 +942,17 @@
                 recTimerDisplay.innerText = `${m}:${s < 10 ? '0' : ''}${s}`;
             }, 1000);
 
+            // FIX: Guard logic on stop to prevent ghost audio blob
             vnMediaRecorder.onstop = () => {
+                if (isCancelingAudio) {
+                    isVoiceNoteActive = false; 
+                    clearInterval(recTimerInterval);
+                    recWave.classList.remove('playing');
+                    recStopBtn.style.display = 'none'; 
+                    currentAttachmentData = null; // Ensure completely clean
+                    return; // Skip everything else
+                }
+
                 const audioBlob = new Blob(vnAudioChunks, { type: 'audio/webm' });
                 const audioUrl = URL.createObjectURL(audioBlob);
                 currentAttachmentData = { type: 'audio', name: 'Voice Note', data: audioBlob, url: audioUrl, duration: recTimerDisplay.innerText };
@@ -977,7 +982,9 @@
         }
     }
 
+    // FIX: Proper cancellation logic
     function cancelVoiceNoteRecord() {
+        isCancelingAudio = true; 
         if(vnMediaRecorder && vnMediaRecorder.state !== 'inactive') { 
             vnMediaRecorder.stop(); 
         }
