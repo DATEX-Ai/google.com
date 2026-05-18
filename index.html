@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>DATEX AI.com</title>
     <link rel="icon" type="image/jpeg" href="logo.jpg.jpg">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -11,7 +11,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.min.js"></script>
     
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; -webkit-tap-highlight-color: transparent; }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
         
         html, body {
             height: 100%;
@@ -52,8 +52,8 @@
             transition: opacity 0.3s ease-out, visibility 0.3s ease-out;
         }
         #splash-screen img {
-            width: 120px; /* Bada kar diya */
-            height: 120px; /* Bada kar diya */
+            width: 180px; /* FIX: Logo ko aur bada kar diya */
+            height: 180px; /* FIX: Logo ko aur bada kar diya */
             border-radius: 50%;
             object-fit: cover;
             animation: splashPop 0.5s cubic-bezier(0.25, 1, 0.5, 1) forwards;
@@ -615,6 +615,19 @@
         }, 1200); // 1.2 seconds Intro Duration
     });
     // ---------------------------
+
+    // FIX: Strictly prevent Pinch Zoom & Double Tap Zoom
+    document.addEventListener('gesturestart', function (e) {
+        e.preventDefault();
+    });
+    let lastTouchEnd = 0;
+    document.addEventListener('touchend', function (event) {
+        let now = (new Date()).getTime();
+        if (now - lastTouchEnd <= 300) {
+            event.preventDefault();
+        }
+        lastTouchEnd = now;
+    }, false);
 
     document.addEventListener('contextmenu', function(e) {
         if (e.target.tagName !== 'TEXTAREA' && e.target.tagName !== 'INPUT') {
