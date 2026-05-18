@@ -1431,7 +1431,6 @@ CRITICAL INSTRUCTIONS:
         let useVision = false;
         let apiMessages = [ { "role": "system", "content": dynamicSystemPrompt } ];
         
-        // LIMIT CHAT HISTORY TO SAVE TOKENS (Send only the last 6 messages)
         let recentMessages = chatHistory[activeChatIndex].messages.slice(-6);
         recentMessages.forEach(msg => {
             if (msg.role === 'user') {
@@ -1456,7 +1455,8 @@ CRITICAL INSTRUCTIONS:
             }
         });
 
-        const selectedModel = useVision ? "llama-3.2-11b-vision-preview" : "gemma2-9b-it";
+        // FIXED: Reverted back to the smart llama-3.3-70b-versatile model
+        const selectedModel = useVision ? "llama-3.2-11b-vision-preview" : "llama-3.3-70b-versatile";
 
         const searchKeywords = ['aaj', 'today', 'news', 'khabar', 'price', 'match', 'score', 'latest', 'update', 'weather', 'mausam', 'kal', 'yesterday', 'current', 'stock', 'who won', 'kaun jeeta', 'batao', 'search', 'link', 'youtube', 'video', 'channel', 'instagram', 'linkedin', 'facebook', 'twitter', 'website', 'profile', 'account', 'url', 'site', 'browser', 'google'];
         const needsSearch = searchKeywords.some(keyword => message.toLowerCase().includes(keyword));
