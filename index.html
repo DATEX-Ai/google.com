@@ -58,7 +58,6 @@
             object-fit: cover;
             animation: splashPop 0.5s cubic-bezier(0.25, 1, 0.5, 1) forwards;
         }
-        /* FIXED: Transform scale/zooming removed from logo animation */
         @keyframes splashPop {
             0% { opacity: 0; }
             100% { opacity: 1; }
@@ -81,8 +80,10 @@
         .chat-list { list-style: none; }
         .chat-item-wrapper { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; background: #fff; border: 1px solid #eee; border-radius: 8px; padding-right: 10px; }
         .chat-item { flex: 1; padding: 12px; cursor: pointer; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border: none; background: transparent; text-align: left; }
-        .delete-chat-btn { color: #999; cursor: pointer; font-size: 14px; transition: 0.2s; padding: 5px; }
-        .delete-chat-btn:hover { color: #ff4d4d; }
+        
+        /* FIX: Trash buttons default color changed to Red */
+        .delete-chat-btn { color: #ff4d4d; cursor: pointer; font-size: 14px; transition: 0.2s; padding: 5px; }
+        .delete-chat-btn:hover { color: #ff1a1a; }
 
         .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.1); display: none; z-index: 1000; cursor: pointer; }
         .overlay.active { display: block; }
@@ -108,7 +109,7 @@
         }
         
         .menu-btn-container { width: 38px; height: 38px; border: 1.5px solid #333; border-radius: 50%; display: flex; flex-direction: column; justify-content: center; align-items: flex-start; padding-left: 9px; cursor: pointer; gap: 4px; }
-        .menu-btn-container .menu-line { height: 2px; background: #333; border-radius: 2px; }
+        .menu-line { height: 2px; background: #333; border-radius: 2px; }
         .line-1 { width: 18px; } .line-2 { width: 13px; } .line-3 { width: 8px; }
 
         .header-center { flex: 1; text-align: center; }
@@ -489,7 +490,7 @@
     <div id="msg-menu" class="msg-menu">
         <button id="copy-btn-ui" onclick="copyMsg()"><i class="fas fa-copy"></i> Copy</button>
         <button id="edit-btn-ui" onclick="editMsg()"><i class="fas fa-pen"></i> Edit</button>
-        <button id="delete-btn-ui" onclick="deleteSelectedMsg()" style="color:red;"><i class="fas fa-trash"></i> Delete</button>
+        <button id="delete-btn-ui" onclick="deleteSelectedMsg()" style="color:#ff4d4d;"><i class="fas fa-trash"></i> Delete</button>
     </div>
 
     <div class="attachment-menu" id="attachment-menu">
@@ -580,7 +581,7 @@
                         
                         <div id="recording-ui" class="recording-ui">
                             <div class="recording-pill">
-                                <i class="fas fa-trash-alt" onclick="cancelVoiceNoteRecord()" style="color: #555; cursor: pointer; font-size: 16px;"></i>
+                                <i class="fas fa-trash-alt" onclick="cancelVoiceNoteRecord()" style="color: #ff4d4d; cursor: pointer; font-size: 16px;"></i>
                                 <div class="wave-animation" id="rec-wave">
                                     <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
                                 </div>
@@ -606,7 +607,7 @@
     </div>
 
     <script>
-    // --- SPLASH SCREEN LOGIC (Every Refresh) ---
+    // --- SPLASH SCREEN LOGIC ---
     document.addEventListener("DOMContentLoaded", () => {
         const splash = document.getElementById('splash-screen');
         setTimeout(() => {
@@ -617,7 +618,6 @@
     });
     // ---------------------------
 
-    // Prevent pinch zoom & double tap zoom
     document.addEventListener('gesturestart', function (e) {
         e.preventDefault();
     });
@@ -707,7 +707,7 @@
                         const scaleSize = MAX_WIDTH / img.width;
                         canvas.width = MAX_WIDTH;
                         canvas.height = img.height * scaleSize;
-                        const ctx = canvas.createElement('canvas').getContext('2d');
+                        const ctx = canvas.getContext('2d');
                         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
                         const compressedBase64 = canvas.toDataURL('image/jpeg', 0.6);
 
@@ -800,6 +800,7 @@
 
 
     let isDictating = false; 
+    let sessionFinalText = ""; 
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     let recognition;
     
@@ -810,6 +811,8 @@
         
         recognition.onstart = () => { 
             isDictating = true; 
+            sessionFinalText = document.getElementById('user-input').value; 
+            if (sessionFinalText.length > 0 && !sessionFinalText.endsWith(" ")) { sessionFinalText += " "; } 
             const btn = document.getElementById('mike-btn'); 
             btn.classList.add('recording'); 
         };
