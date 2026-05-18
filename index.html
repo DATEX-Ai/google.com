@@ -794,18 +794,21 @@
         }
     }
 
-    // --- FIX: TEXT-TO-SPEECH (NON-LIVE) ---
+
     let isDictating = false; 
+    let sessionFinalText = ""; 
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     let recognition;
     
     if (SpeechRecognition) {
         recognition = new SpeechRecognition();
-        recognition.interimResults = false; // LIVE TYPING OFF
-        recognition.continuous = false; // Auto-stop after breath/pause
+        recognition.interimResults = false; 
+        recognition.continuous = true;
         
         recognition.onstart = () => { 
             isDictating = true; 
+            sessionFinalText = document.getElementById('user-input').value; 
+            if (sessionFinalText.length > 0 && !sessionFinalText.endsWith(" ")) { sessionFinalText += " "; } 
             const btn = document.getElementById('mike-btn'); 
             btn.classList.add('recording'); 
         };
@@ -857,7 +860,7 @@
     let vnAudioChunks = [];
     let isVoiceNoteActive = false; 
     let isSendingAudio = false; 
-    let isCancelingAudio = false; // FIX: Lock for delete action
+    let isCancelingAudio = false; 
     let recTimerInterval;
     let recSeconds = 0;
     
@@ -925,7 +928,7 @@
             
             isVoiceNoteActive = true;
             isSendingAudio = false;
-            isCancelingAudio = false; // Reset lock
+            isCancelingAudio = false; 
             
             txtArea.style.display = 'none';
             micBtnContainer.style.display = 'none';
@@ -942,15 +945,14 @@
                 recTimerDisplay.innerText = `${m}:${s < 10 ? '0' : ''}${s}`;
             }, 1000);
 
-            // FIX: Guard logic on stop to prevent ghost audio blob
             vnMediaRecorder.onstop = () => {
                 if (isCancelingAudio) {
                     isVoiceNoteActive = false; 
                     clearInterval(recTimerInterval);
                     recWave.classList.remove('playing');
                     recStopBtn.style.display = 'none'; 
-                    currentAttachmentData = null; // Ensure completely clean
-                    return; // Skip everything else
+                    currentAttachmentData = null; 
+                    return; 
                 }
 
                 const audioBlob = new Blob(vnAudioChunks, { type: 'audio/webm' });
@@ -982,7 +984,6 @@
         }
     }
 
-    // FIX: Proper cancellation logic
     function cancelVoiceNoteRecord() {
         isCancelingAudio = true; 
         if(vnMediaRecorder && vnMediaRecorder.state !== 'inactive') { 
@@ -1453,7 +1454,7 @@ CRITICAL INSTRUCTIONS:
             }
         });
 
-        const selectedModel = useVision ? "llama-3.2-11b-vision-preview" : "llama-3.3-70b-versatile";
+        const selectedModel = useVision ? "llama-3.2-11b-vision-preview" : "llama-3.1-8b-instant";
 
         const searchKeywords = ['aaj', 'today', 'news', 'khabar', 'price', 'match', 'score', 'latest', 'update', 'weather', 'mausam', 'kal', 'yesterday', 'current', 'stock', 'who won', 'kaun jeeta', 'batao', 'search', 'link', 'youtube', 'video', 'channel', 'instagram', 'linkedin', 'facebook', 'twitter', 'website', 'profile', 'account', 'url', 'site', 'browser', 'google'];
         const needsSearch = searchKeywords.some(keyword => message.toLowerCase().includes(keyword));
