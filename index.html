@@ -643,7 +643,7 @@
         resizeHandler();
     }
 
-    const GROQ_API_KEY = "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"; 
+    const GROQ_API_KEY = "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"; 
     const TAVILY_API_KEY = "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"; 
 
     let chatHistory = JSON.parse(localStorage.getItem('datex_full_history')) || [];
@@ -794,7 +794,6 @@
         }
     }
 
-
     let isDictating = false; 
     let sessionFinalText = ""; 
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -803,7 +802,7 @@
     if (SpeechRecognition) {
         recognition = new SpeechRecognition();
         recognition.interimResults = false; 
-        recognition.continuous = true;
+        recognition.continuous = false; 
         
         recognition.onstart = () => { 
             isDictating = true; 
@@ -1431,7 +1430,10 @@ CRITICAL INSTRUCTIONS:
 
         let useVision = false;
         let apiMessages = [ { "role": "system", "content": dynamicSystemPrompt } ];
-        chatHistory[activeChatIndex].messages.forEach(msg => {
+        
+        // LIMIT CHAT HISTORY TO SAVE TOKENS (Send only the last 6 messages)
+        let recentMessages = chatHistory[activeChatIndex].messages.slice(-6);
+        recentMessages.forEach(msg => {
             if (msg.role === 'user') {
                 if (msg.attachment && msg.attachment.type === 'image') {
                     useVision = true;
@@ -1454,7 +1456,7 @@ CRITICAL INSTRUCTIONS:
             }
         });
 
-        const selectedModel = useVision ? "llama-3.2-11b-vision-preview" : "llama-3.1-8b-instant";
+        const selectedModel = useVision ? "llama-3.2-11b-vision-preview" : "gemma2-9b-it";
 
         const searchKeywords = ['aaj', 'today', 'news', 'khabar', 'price', 'match', 'score', 'latest', 'update', 'weather', 'mausam', 'kal', 'yesterday', 'current', 'stock', 'who won', 'kaun jeeta', 'batao', 'search', 'link', 'youtube', 'video', 'channel', 'instagram', 'linkedin', 'facebook', 'twitter', 'website', 'profile', 'account', 'url', 'site', 'browser', 'google'];
         const needsSearch = searchKeywords.some(keyword => message.toLowerCase().includes(keyword));
