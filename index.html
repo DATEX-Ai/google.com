@@ -170,6 +170,36 @@
             touch-action: none;
             position: relative;
         }
+
+        /* --- FIX: SCROLL TO BOTTOM BUTTON CSS --- */
+        .scroll-bottom-btn {
+            position: absolute;
+            top: -55px; /* Appears just above the input bar */
+            right: 20px;
+            width: 38px;
+            height: 38px;
+            background: #ffffff;
+            color: #000000;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+            cursor: pointer;
+            border: 1px solid #eee;
+            z-index: 1000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease, transform 0.2s ease;
+            transform: translateY(10px);
+            font-size: 16px;
+        }
+        .scroll-bottom-btn.active {
+            opacity: 1;
+            pointer-events: auto;
+            transform: translateY(0);
+        }
+        /* -------------------------------------- */
         
         .drag-lock-ui {
             position: absolute;
@@ -550,6 +580,11 @@
         </main>
 
         <div class="bottom-container">
+            
+            <div id="scroll-bottom-btn" class="scroll-bottom-btn" onclick="scrollToBottomFunc()">
+                <i class="fas fa-angle-double-down"></i>
+            </div>
+
             <div id="drag-lock-ui" class="drag-lock-ui">
                 <div class="lock-circle"><i class="fas fa-lock"></i></div>
                 <div class="dot"></div>
@@ -605,6 +640,15 @@
     </div>
 
     <script>
+    // --- FIX: Scroll to bottom function ---
+    function scrollToBottomFunc() {
+        const container = document.getElementById('chat-container');
+        container.scrollTo({
+            top: container.scrollHeight,
+            behavior: 'smooth'
+        });
+    }
+
     document.addEventListener("DOMContentLoaded", () => {
         const splash = document.getElementById('splash-screen');
         setTimeout(() => {
@@ -662,6 +706,15 @@
     document.getElementById('chat-container').addEventListener('scroll', () => {
         if(document.getElementById('msg-menu').style.display === 'flex') {
             hideMsgMenu();
+        }
+        
+        // FIX: Scroll down button visibility logic
+        const container = document.getElementById('chat-container');
+        const scrollBtn = document.getElementById('scroll-bottom-btn');
+        if (container.scrollHeight - container.scrollTop - container.clientHeight > 150) {
+            scrollBtn.classList.add('active');
+        } else {
+            scrollBtn.classList.remove('active');
         }
     });
     window.addEventListener('scroll', hideMsgMenu);
@@ -1037,6 +1090,9 @@
             else { addAiMessageToUI(msg.content, false, msgIdx); }
         });
         if(shouldToggleSidebar) toggleSidebar();
+        
+        // Hide scroll button initially
+        document.getElementById('scroll-bottom-btn').classList.remove('active');
     }
 
     function createNewChat(keepSidebarOpen = false) {
@@ -1048,6 +1104,9 @@
         input.value = "";
         autoGrow(input);
         if(!keepSidebarOpen && document.getElementById('sidebar').classList.contains('active')) toggleSidebar();
+        
+        // Hide scroll button
+        document.getElementById('scroll-bottom-btn').classList.remove('active');
     }
 
     function toggleSidebar() {
@@ -1455,7 +1514,6 @@ CRITICAL INSTRUCTIONS:
             }
         });
 
-        // FIXED: Reverted back to the smart llama-3.3-70b-versatile model
         const selectedModel = useVision ? "llama-3.2-11b-vision-preview" : "llama-3.3-70b-versatile";
 
         const searchKeywords = ['aaj', 'today', 'news', 'khabar', 'price', 'match', 'score', 'latest', 'update', 'weather', 'mausam', 'kal', 'yesterday', 'current', 'stock', 'who won', 'kaun jeeta', 'batao', 'search', 'link', 'youtube', 'video', 'channel', 'instagram', 'linkedin', 'facebook', 'twitter', 'website', 'profile', 'account', 'url', 'site', 'browser', 'google'];
